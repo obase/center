@@ -1,90 +1,126 @@
-package consul
+package center
 
 import (
-	"context"
-	"errors"
 	"github.com/hashicorp/consul/api"
-	"github.com/obase/conf"
 	"github.com/obase/log"
+	"strings"
+	"sync"
+	"time"
 )
 
-var (
-	client           *api.Client
-	ErrInvalidClient = errors.New("invalid consul client")
-)
+type cacheEntry struct {
+	vl []*Service
+	ts int64
+}
 
-const (
-	KEY_AGENT     = "service.consulAgent"
-	KEY_AGENT_828 = "ext.service.centerAddr"
-)
+type consulCenter struct {
+	*api.Client
+	ttl       int64
+	now       int64
+	lastIndex uint64
+	cache     *sync.Map
+}
 
-func init() {
-
-	consulAddress, ok := conf.GetString(KEY_AGENT)
-	if !ok {
-		if consulAddress, ok = conf.GetString(KEY_AGENT_828); !ok {
-			return
-		}
-	}
+func newConsulCenter(address string, timeout time.Duration) *consulCenter {
 
 	config := api.DefaultConfig()
-	if consulAddress != "" {
-		config.Address = consulAddress
+	if address != "" {
+		config.Address = address
 	}
+	var client *api.Client
 	var err error
 	if client, err = api.NewClient(config); err != nil { // 兼容旧的逻辑
-		log.Errorf(context.Background(), "Connect consul error: %s, %v", consulAddress, err)
+		log.Errorf(nil, "Connect consul error: %s, %v", address, err)
 		log.Flushf()
 	} else {
 		if _, err = client.Agent().Services(); err != nil {
-			log.Errorf(context.Background(), "Connect consul error: %s, %v", consulAddress, err)
+			log.Errorf(nil, "Connect consul error: %s, %v", address, err)
 			log.Flushf()
 		} else {
-			log.Inforf(context.Background(), "Connect consul success: %s", consulAddress)
+			log.Inforf(nil, "Connect consul success: %s", address)
 			log.Flushf()
 		}
 	}
-
+	return &consulCenter{
+		Client: client,
+		ttl:    int64(timeout.Seconds()),
+		cache:  new(sync.Map),
+	}
 }
+func (client *consulCenter) Register(service *Service, check *Check) (err error) {
 
-func RegisterService(service *api.AgentServiceRegistration) (err error) {
-	if client != nil {
-		log.Warnf(nil, "Register service failed: invalid consul client, %v", service)
-		log.Flushf()
-		return ErrInvalidClient
+	var consulCheck *api.AgentServiceCheck
+	var consulService *api.AgentServiceRegistration
+
+	if check != nil {
+		switch strings.ToUpper(check.Type) {
+		case "HTTP":
+			consulCheck = &api.AgentServiceCheck{
+				HTTP:                           check.Target,
+				Timeout:                        check.Timeout,
+				Interval:                       check.Interval,
+				DeregisterCriticalServiceAfter: check.Interval,
+			}
+		case "GRPC":
+			consulCheck = &api.AgentServiceCheck{
+				GRPC:                           check.Target,
+				Timeout:                        check.Timeout,
+				Interval:                       check.Interval,
+				DeregisterCriticalServiceAfter: check.Interval,
+			}
+		}
 	}
-	if err = client.Agent().ServiceRegister(service); err != nil {
-		log.Errorf(nil, "Register service error: %v, %v", service, err)
-		log.Flushf()
-	} else {
-		log.Inforf(nil, "Register service success: %v", service)
-		log.Flushf()
+	consulService = &api.AgentServiceRegistration{
+		Kind:    api.ServiceKind(service.Kind),
+		ID:      service.Id,
+		Name:    service.Name,
+		Address: service.Host,
+		Port:    service.Port,
+		Check:   consulCheck,
 	}
-	return
+
+	return client.Agent().ServiceRegister(consulService)
 }
-
-func DeregisterService(serviceId string) (err error) {
-	if client == nil {
-		log.Warnf(nil, "Deregister service failed: invalid consul client, %v", serviceId)
-		log.Flushf()
-		return ErrInvalidClient
-	}
-	if err = client.Agent().ServiceDeregister(serviceId); err != nil {
-		log.Errorf(context.Background(), "Deregister service error: %v, %v", serviceId, err)
-		log.Flushf()
-	} else {
-		log.Inforf(context.Background(), "Deregister service success: %v", serviceId)
-		log.Flushf()
-	}
-	return
+func (client *consulCenter) Deregister(serviceId string) (err error) {
+	return client.Agent().ServiceDeregister(serviceId)
 }
+func (client *consulCenter) Discovery(name string) ([]*Service, error) {
 
-func DiscoveryService(lastIndex uint64, serviceId string) ([]*api.ServiceEntry, *api.QueryMeta, error) {
-	if client == nil {
-		log.Warnf(nil, "Disconvery service failed: invalid consul client, %v", serviceId)
-		return nil, nil, ErrInvalidClient
+	var entry *cacheEntry
+	now := time.Now().Unix()
+	if tmp, ok := client.cache.Load(name); ok {
+		if entry, ok = tmp.(*cacheEntry); ok {
+			if now-entry.ts < client.ttl {
+				return entry.vl, nil
+			}
+		}
 	}
-	return client.Health().Service(serviceId, "", true, &api.QueryOptions{
-		WaitIndex: lastIndex,
+
+	entries, metainfo, err := client.Health().Service(name, "", true, &api.QueryOptions{
+		WaitIndex: client.lastIndex,
 	})
+	if err != nil {
+		return nil, err
+	}
+	services := make([]*Service, len(entries))
+	for i, entry := range entries {
+		services[i] = &Service{
+			Id:   entry.Service.ID,
+			Kind: string(entry.Service.Kind),
+			Name: name,
+			Host: entry.Service.Address,
+			Port: entry.Service.Port,
+		}
+	}
+	client.lastIndex = metainfo.LastIndex
+	if entry == nil {
+		entry.vl = services
+		entry.ts = now
+	} else {
+		client.cache.Store(name, &cacheEntry{
+			vl: services,
+			ts: now,
+		})
+	}
+	return services, nil
 }
