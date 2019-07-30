@@ -68,6 +68,21 @@ func Discovery(name string) ([]*Service, error) {
 	return Default.Discovery(name)
 }
 
+func Robin(name string) (*Service, error) {
+	if Default == nil {
+		log.Warnf(nil, "Disconvery service failed: invalid consul client, %v", name)
+		return nil, ErrInvalidClient
+	}
+	return Default.Robin(name)
+}
+func Hash(name string, key string) (*Service, error) {
+	if Default == nil {
+		log.Warnf(nil, "Disconvery service failed: invalid consul client, %v", name)
+		return nil, ErrInvalidClient
+	}
+	return Default.Hash(name, key)
+}
+
 const (
 	c1_32 uint32 = 0xcc9e2d51
 	c2_32 uint32 = 0x1b873593
