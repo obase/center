@@ -19,6 +19,7 @@ type consulCenter struct {
 	now       int64
 	lastIndex uint64
 	cache     *sync.Map
+	robin     uint32
 }
 
 func newConsulCenter(address string, timeout time.Duration) *consulCenter {
@@ -123,4 +124,29 @@ func (client *consulCenter) Discovery(name string) ([]*Service, error) {
 		})
 	}
 	return services, nil
+}
+
+func (client *consulCenter) Robin(name string) (*Service, error) {
+	services, err := Discovery(name)
+	if err != nil {
+		return nil, err
+	}
+	size := uint32(len(services))
+	if size == 0 {
+		return nil, nil
+	}
+	client.robin++
+	return services[client.robin%size], nil
+}
+func (client *consulCenter) Hash(name string, key string) (*Service, error) {
+	services, err := Discovery(name)
+	if err != nil {
+		return nil, err
+	}
+	size := uint32(len(services))
+	if size == 0 {
+		return nil, nil
+	}
+	idx := mmhash([]byte(key))
+	return services[idx%size], nil
 }

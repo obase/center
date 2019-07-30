@@ -1,4 +1,4 @@
-module github.com/obase/consul
+module github.com/obase/center
 
 go 1.12
 
