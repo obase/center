@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var updatePeriod = conf.OptiDuration("grpcx.namingUpdateTimeout", 500*time.Millisecond)
+var updatePeriod = conf.OptiDuration("grpcx.namingUpdatePeriod", 500*time.Millisecond)
 
 type serviceWatcher struct {
 	serviceName string
