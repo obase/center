@@ -7,7 +7,7 @@ import (
 
 const PCKEY = "service.center"
 
-const DEFAULT_TIMEOUT = time.Minute
+const DEFAULT_TIMEOUT = 5 * time.Second
 
 func init() {
 	config, ok := conf.Get(PCKEY)
