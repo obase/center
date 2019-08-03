@@ -2,6 +2,7 @@ package center
 
 import (
 	"github.com/obase/conf"
+	"github.com/obase/log"
 	"time"
 )
 
@@ -18,12 +19,14 @@ func init() {
 	switch config := config.(type) {
 	case string:
 		Setup(&Option{Address: config, Timeout: DEFAULT_TIMEOUT})
-	case map[string]interface{}:
-		address, _ := conf.ElemString(config, "address")
-		timeout, ok := conf.ElemDuration(config, "timeout")
-		if !ok {
-			timeout = DEFAULT_TIMEOUT
+	case map[interface{}]interface{}:
+		var option *Option
+		conf.Scan(PCKEY, &option)
+		if option != nil && option.Timeout == 0 {
+			option.Timeout = DEFAULT_TIMEOUT
 		}
-		Setup(&Option{Address: address, Timeout: timeout})
+		Setup(option)
+	default:
+		log.Errorf(nil, "Invalid config option of "+PCKEY)
 	}
 }

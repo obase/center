@@ -10,8 +10,9 @@ import (
 var ErrInvalidClient = errors.New("invalid consul client")
 
 type Option struct {
-	Address string        // 远程地址
-	Timeout time.Duration // 本地缓存过期时间
+	Address string              // 远程地址
+	Timeout time.Duration       // 本地缓存过期时间
+	Configs map[string][]string // 本地配置address
 }
 
 // 根据consul的服务项设计
@@ -41,7 +42,11 @@ type Center interface {
 var Default Center
 
 func Setup(opt *Option) {
-	Default = newConsulCenter(opt.Address, opt.Timeout)
+	if len(opt.Configs) > 0 {
+		Default = newConfigClient(opt.Configs)
+	} else {
+		Default = newConsulCenter(opt)
+	}
 }
 
 func Register(service *Service, check *Check) (err error) {

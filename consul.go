@@ -14,6 +14,7 @@ type cacheEntry struct {
 }
 
 type consulCenter struct {
+	*Option
 	*api.Client
 	ttl       int64
 	now       int64
@@ -22,29 +23,29 @@ type consulCenter struct {
 	robin     uint32
 }
 
-func newConsulCenter(address string, timeout time.Duration) *consulCenter {
-
+func newConsulCenter(opt *Option) *consulCenter {
 	config := api.DefaultConfig()
-	if address != "" {
-		config.Address = address
+	if opt.Address != "" {
+		config.Address = opt.Address
 	}
 	var client *api.Client
 	var err error
 	if client, err = api.NewClient(config); err != nil { // 兼容旧的逻辑
-		log.Errorf(nil, "Connect consul error: %s, %v", address, err)
+		log.Errorf(nil, "Connect consul error: %s, %v", opt.Address, err)
 		log.Flushf()
 	} else {
 		if _, err = client.Agent().Services(); err != nil {
-			log.Errorf(nil, "Connect consul error: %s, %v", address, err)
+			log.Errorf(nil, "Connect consul error: %s, %v", opt.Address, err)
 			log.Flushf()
 		} else {
-			log.Inforf(nil, "Connect consul success: %s", address)
+			log.Inforf(nil, "Connect consul success: %s", opt.Address)
 			log.Flushf()
 		}
 	}
 	return &consulCenter{
+		Option: opt,
 		Client: client,
-		ttl:    int64(timeout.Seconds()),
+		ttl:    int64(opt.Timeout.Seconds()),
 		cache:  new(sync.Map),
 	}
 }
@@ -86,7 +87,6 @@ func (client *consulCenter) Deregister(serviceId string) (err error) {
 	return client.Agent().ServiceDeregister(serviceId)
 }
 func (client *consulCenter) Discovery(name string) ([]*Service, error) {
-
 	var entry *cacheEntry
 	now := time.Now().Unix()
 	if tmp, ok := client.cache.Load(name); ok {
