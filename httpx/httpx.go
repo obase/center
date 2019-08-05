@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -53,21 +54,29 @@ var defaultReverseProxy = &httputil.ReverseProxy{
 	},
 }
 
+var buffpool = &sync.Pool{
+	New: func() interface{} {
+		return bytes.NewBuffer(make([]byte, 256))
+	},
+}
+
 func Request(method string, serviceName string, uri string, header map[string]string, body io.Reader) (state int, content string, err error) {
 	service, err := center.Robin(serviceName)
 	if err != nil {
 		return
 	}
 	// 提早分配buf,减少内存分配
-	buf := bytes.NewBuffer(make([]byte, 2048))
+	buf := buffpool.Get().(*bytes.Buffer)
 	buf.WriteString("http://")
 	buf.WriteString(service.Host)
 	buf.WriteString(":")
 	buf.WriteString(strconv.Itoa(service.Port))
 	buf.WriteString(uri)
+	url := buf.String()
+	buffpool.Put(buf)
 
 	// 创建请求
-	req, err := http.NewRequest(method, buf.String(), body)
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return
 	}
