@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-const PCKEY = "service.center"
+const PCKEY1 = "service.center"
 
 const DEFAULT_TIMEOUT = 5 * time.Second
 
 func init() {
-	config, ok := conf.Get(PCKEY)
+	config, ok := conf.Get(PCKEY1)
 	if !ok {
 		return
 	}
@@ -21,7 +21,7 @@ func init() {
 		Setup(&Config{Address: config, Timeout: DEFAULT_TIMEOUT})
 	case map[interface{}]interface{}:
 		var option *Config
-		conf.Scan(PCKEY, &option)
+		conf.Scan(PCKEY1, &option)
 		if option != nil && option.Timeout == 0 {
 			option.Timeout = DEFAULT_TIMEOUT
 		}
