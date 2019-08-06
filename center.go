@@ -9,7 +9,7 @@ import (
 
 var ErrInvalidClient = errors.New("invalid consul client")
 
-type Option struct {
+type Config struct {
 	Address string              // 远程地址
 	Timeout time.Duration       // 本地缓存过期时间
 	Configs map[string][]string // 本地配置address
@@ -41,7 +41,7 @@ type Center interface {
 
 var Default Center
 
-func Setup(opt *Option) {
+func Setup(opt *Config) {
 	if len(opt.Configs) > 0 {
 		Default = newConfigClient(opt.Configs)
 	} else {

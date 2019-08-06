@@ -14,7 +14,7 @@ type cacheEntry struct {
 }
 
 type consulCenter struct {
-	*Option
+	*Config
 	*api.Client
 	ttl       int64
 	now       int64
@@ -23,7 +23,7 @@ type consulCenter struct {
 	robin     uint32
 }
 
-func newConsulCenter(opt *Option) *consulCenter {
+func newConsulCenter(opt *Config) *consulCenter {
 	config := api.DefaultConfig()
 	if opt.Address != "" {
 		config.Address = opt.Address
@@ -43,7 +43,7 @@ func newConsulCenter(opt *Option) *consulCenter {
 		}
 	}
 	return &consulCenter{
-		Option: opt,
+		Config: opt,
 		Client: client,
 		ttl:    int64(opt.Timeout.Seconds()),
 		cache:  new(sync.Map),

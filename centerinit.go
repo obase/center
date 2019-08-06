@@ -18,9 +18,9 @@ func init() {
 
 	switch config := config.(type) {
 	case string:
-		Setup(&Option{Address: config, Timeout: DEFAULT_TIMEOUT})
+		Setup(&Config{Address: config, Timeout: DEFAULT_TIMEOUT})
 	case map[interface{}]interface{}:
-		var option *Option
+		var option *Config
 		conf.Scan(PCKEY, &option)
 		if option != nil && option.Timeout == 0 {
 			option.Timeout = DEFAULT_TIMEOUT
