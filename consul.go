@@ -23,7 +23,7 @@ type consulCenter struct {
 	robin     uint32
 }
 
-func newConsulCenter(opt *Config) *consulCenter {
+func newConsulCenter(opt *Config) Center {
 	config := api.DefaultConfig()
 	if opt.Address != "" {
 		config.Address = opt.Address
@@ -33,10 +33,12 @@ func newConsulCenter(opt *Config) *consulCenter {
 	if client, err = api.NewClient(config); err != nil { // 兼容旧的逻辑
 		log.Errorf(nil, "Connect consul error: %s, %v", opt.Address, err)
 		log.Flushf()
+		return nil
 	} else {
 		if _, err = client.Agent().Services(); err != nil {
 			log.Errorf(nil, "Connect consul error: %s, %v", opt.Address, err)
 			log.Flushf()
+			return nil
 		} else {
 			log.Inforf(nil, "Connect consul success: %s", opt.Address)
 			log.Flushf()

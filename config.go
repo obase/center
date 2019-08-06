@@ -10,8 +10,8 @@ type configClient struct {
 	robin   uint32
 }
 
-func newConfigClient(cfs map[string][]string) (ret *configClient) {
-	ret = &configClient{
+func newConfigClient(cfs map[string][]string) Center {
+	ret := &configClient{
 		entries: make(map[string][]*Service),
 	}
 	for k, v := range cfs {
@@ -25,7 +25,7 @@ func newConfigClient(cfs map[string][]string) (ret *configClient) {
 		}
 		ret.entries[k] = ss
 	}
-	return
+	return ret
 }
 
 func (c *configClient) Register(service *Service, check *Check) (err error) {
