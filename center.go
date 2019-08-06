@@ -2,7 +2,6 @@ package center
 
 import (
 	"errors"
-	"github.com/obase/log"
 	"time"
 	"unsafe"
 )
@@ -51,23 +50,18 @@ func Setup(opt *Config) {
 
 func Register(service *Service, check *Check) (err error) {
 	if Default == nil {
-		log.Warnf(nil, "Register service failed: invalid consul client, %v", service)
-		log.Flushf()
 		return ErrInvalidClient
 	}
 	return Default.Register(service, check)
 }
 func Deregister(serviceId string) (err error) {
 	if Default != nil {
-		log.Warnf(nil, "Deregister service failed: invalid consul client, %v", serviceId)
-		log.Flushf()
 		return ErrInvalidClient
 	}
 	return Default.Deregister(serviceId)
 }
 func Discovery(name string) ([]*Service, error) {
 	if Default == nil {
-		log.Warnf(nil, "Disconvery service failed: invalid consul client, %v", name)
 		return nil, ErrInvalidClient
 	}
 	return Default.Discovery(name)
@@ -75,14 +69,12 @@ func Discovery(name string) ([]*Service, error) {
 
 func Robin(name string) (*Service, error) {
 	if Default == nil {
-		log.Warnf(nil, "Disconvery service failed: invalid consul client, %v", name)
 		return nil, ErrInvalidClient
 	}
 	return Default.Robin(name)
 }
 func Hash(name string, key string) (*Service, error) {
 	if Default == nil {
-		log.Warnf(nil, "Disconvery service failed: invalid consul client, %v", name)
 		return nil, ErrInvalidClient
 	}
 	return Default.Hash(name, key)
