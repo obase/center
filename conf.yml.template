@@ -15,3 +15,8 @@ service:
   center:
     configs:
       pvpbroker: ["172.31.0.5:9000","172.31.0.19:9000"]
+
+或者禁止center
+service:
+  # consul注册中心,默认127.0.0.1:8500. 不设置则忽略!
+  center: off

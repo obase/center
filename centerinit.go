@@ -2,7 +2,6 @@ package center
 
 import (
 	"github.com/obase/conf"
-	"github.com/obase/log"
 	"time"
 )
 
@@ -10,9 +9,7 @@ const (
 	PCKEY1 = "service.center"
 	PCKEY2 = "ext.service.centerAddr"
 
-	NONEVAL1 = "none"
-	NONEVAL2 = "off"
-	NONEVAL3 = "disable"
+	OFF = "off"
 )
 
 const DEFAULT_TIMEOUT = 5 * time.Second
@@ -29,11 +26,9 @@ func init() {
 	case nil:
 		Setup(&Config{Address: "", Timeout: DEFAULT_TIMEOUT})
 	case string:
-		// 如果是
-		if config == NONEVAL1 || config == NONEVAL2 || config == NONEVAL3 {
-			return
+		if config != OFF {
+			Setup(&Config{Address: config, Timeout: DEFAULT_TIMEOUT})
 		}
-		Setup(&Config{Address: config, Timeout: DEFAULT_TIMEOUT})
 	case map[interface{}]interface{}:
 		var option *Config
 		conf.Convert(config, &option)
@@ -41,7 +36,5 @@ func init() {
 			option.Timeout = DEFAULT_TIMEOUT
 		}
 		Setup(option)
-	default:
-		log.Errorf(nil, "Invalid config for center")
 	}
 }
