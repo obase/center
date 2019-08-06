@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var updateSleepDuration = conf.OptiDuration("grpcx.updateSleepDuration", 500*time.Millisecond)
+var updateSleepDuration = conf.OptiDuration("grpcx.updateSleepDuration", time.Second)
 
 type serviceWatcher struct {
 	serviceName string

@@ -1,7 +1,15 @@
 # package httpx
+http扩展客户端
 
 # Installation
-
+- go get
+```
+go get -u github.com/obase/center
+```
+- go mod
+```
+go mod edit -require=github.com/obase/center@latest
+```
 # Configuration
 conf.yml
 ```
