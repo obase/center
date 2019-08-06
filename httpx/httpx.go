@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -11,7 +12,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strconv"
-	"sync"
+	"strings"
 	"time"
 )
 
@@ -54,27 +55,13 @@ var defaultReverseProxy = &httputil.ReverseProxy{
 	},
 }
 
-var buffpool = &sync.Pool{
-	New: func() interface{} {
-		return bytes.NewBuffer(make([]byte, 256))
-	},
-}
-
 func Request(method string, serviceName string, uri string, header map[string]string, body io.Reader) (state int, content string, err error) {
 	service, err := center.Robin(serviceName)
 	if err != nil {
 		return
 	}
-	// 提早分配buf,减少内存分配
-	buf := buffpool.Get().(*bytes.Buffer)
-	buf.WriteString("http://")
-	buf.WriteString(service.Host)
-	buf.WriteString(":")
-	buf.WriteString(strconv.Itoa(service.Port))
-	buf.WriteString(uri)
-	url := buf.String()
-	buffpool.Put(buf)
 
+	url := "http://" + service.Host + ":" + strconv.Itoa(service.Port) + uri
 	// 创建请求
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -90,8 +77,8 @@ func Request(method string, serviceName string, uri string, header map[string]st
 	}
 	defer rsp.Body.Close()
 
-	buf.Reset()
-	_, err = io.Copy(buf, rsp.Body)
+	buf := new(strings.Builder)
+	_, err = io.Copy(buf, bufio.NewReader(rsp.Body))
 	if err != nil {
 		return
 	}
@@ -121,6 +108,18 @@ func Proxy(serviceName string, uri string, writer http.ResponseWriter, request *
 		return
 	}
 	request.Header.Set(X_PROXY_SCHEME, "http")
+	request.Header.Set(X_PROXY_HOST, service.Host+":"+strconv.Itoa(service.Port))
+	request.Header.Set(X_PROXY_PATH, uri)
+	defaultReverseProxy.ServeHTTP(writer, request)
+	return
+}
+
+func ProxyTLS(serviceName string, uri string, writer http.ResponseWriter, request *http.Request) (err error) {
+	service, err := center.Robin(serviceName)
+	if err != nil {
+		return
+	}
+	request.Header.Set(X_PROXY_SCHEME, "https")
 	request.Header.Set(X_PROXY_HOST, service.Host+":"+strconv.Itoa(service.Port))
 	request.Header.Set(X_PROXY_PATH, uri)
 	defaultReverseProxy.ServeHTTP(writer, request)
