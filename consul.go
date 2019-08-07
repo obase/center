@@ -31,17 +31,10 @@ func newConsulCenter(opt *Config) Center {
 	var client *api.Client
 	var err error
 	if client, err = api.NewClient(config); err != nil { // 兼容旧的逻辑
-		log.Errorf(nil, "Connect consul error: %s, %v", opt.Address, err)
-		log.Flushf()
 		return nil
 	} else {
 		if _, err = client.Agent().Services(); err != nil {
-			log.Errorf(nil, "Connect consul error: %s, %v", opt.Address, err)
-			log.Flushf()
 			return nil
-		} else {
-			log.Inforf(nil, "Connect consul success: %s", opt.Address)
-			log.Flushf()
 		}
 	}
 	return &consulCenter{
