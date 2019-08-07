@@ -108,7 +108,7 @@ func (client *consulCenter) Discovery(name string) ([]*Service, error) {
 		}
 	}
 	client.lastIndex = metainfo.LastIndex
-	if entry == nil {
+	if entry != nil {
 		entry.vl = services
 		entry.ts = now
 	} else {
