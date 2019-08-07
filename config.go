@@ -38,7 +38,7 @@ func (c *configClient) Discovery(name string) ([]*Service, error) {
 	return c.entries[name], nil
 }
 func (client *configClient) Robin(name string) (*Service, error) {
-	services, err := Discovery(name)
+	services, err := client.Discovery(name)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (client *configClient) Robin(name string) (*Service, error) {
 	return services[client.robin%size], nil
 }
 func (client *configClient) Hash(name string, key string) (*Service, error) {
-	services, err := Discovery(name)
+	services, err := client.Discovery(name)
 	if err != nil {
 		return nil, err
 	}

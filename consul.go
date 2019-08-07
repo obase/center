@@ -121,7 +121,7 @@ func (client *consulCenter) Discovery(name string) ([]*Service, error) {
 }
 
 func (client *consulCenter) Robin(name string) (*Service, error) {
-	services, err := Discovery(name)
+	services, err := client.Discovery(name)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (client *consulCenter) Robin(name string) (*Service, error) {
 	return services[client.robin%size], nil
 }
 func (client *consulCenter) Hash(name string, key string) (*Service, error) {
-	services, err := Discovery(name)
+	services, err := client.Discovery(name)
 	if err != nil {
 		return nil, err
 	}
