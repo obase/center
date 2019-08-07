@@ -107,6 +107,11 @@ func Proxy(serviceName string, uri string, writer http.ResponseWriter, request *
 	if err != nil {
 		return
 	}
+	// 没有找到服务
+	if service == nil {
+		writer.WriteHeader(http.StatusBadGateway)
+		return
+	}
 	request.Header.Set(X_PROXY_SCHEME, "http")
 	request.Header.Set(X_PROXY_HOST, service.Host+":"+strconv.Itoa(service.Port))
 	request.Header.Set(X_PROXY_PATH, uri)
@@ -117,6 +122,11 @@ func Proxy(serviceName string, uri string, writer http.ResponseWriter, request *
 func ProxyTLS(serviceName string, uri string, writer http.ResponseWriter, request *http.Request) (err error) {
 	service, err := center.Robin(serviceName)
 	if err != nil {
+		return
+	}
+	// 没有找到服务
+	if service == nil {
+		writer.WriteHeader(http.StatusBadGateway)
 		return
 	}
 	request.Header.Set(X_PROXY_SCHEME, "https")
