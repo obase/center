@@ -2,7 +2,6 @@ package center
 
 import (
 	"github.com/hashicorp/consul/api"
-	"github.com/obase/log"
 	"strings"
 	"sync"
 	"time"
