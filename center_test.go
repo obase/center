@@ -9,7 +9,7 @@ import (
 )
 
 func TestDiscovery(t *testing.T) {
-
+	fmt.Println(Discovery("target"))
 }
 
 func TestLockMap(t *testing.T) {

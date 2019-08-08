@@ -27,10 +27,20 @@ func init() {
 			Setup(&Config{Address: config})
 		}
 	case map[interface{}]interface{}:
-		service := make(map[string][]string)
-		for k, v := range config {
-			service[k.(string)] = v.([]string)
+		var service map[string][]string
+
+		address, ok := conf.ElemString(config, "address")
+		refresh, ok := conf.ElemDuration(config, "refresh")
+		tmp, ok := conf.ElemMap(config, "service")
+		if ok {
+			service = make(map[string][]string)
+			for k, v := range tmp {
+				service[k] = v.([]string)
+			}
 		}
-		Setup(&Config{Service: service})
+		Setup(&Config{
+			Address: address,
+			Refresh: refresh,
+		})
 	}
 }
