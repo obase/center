@@ -5,13 +5,13 @@ import (
 	"strconv"
 )
 
-type configClient struct {
+type localClient struct {
 	entries map[string][]*Service
 	robin   uint32
 }
 
-func newConfigClient(cfs map[string][]string) Center {
-	ret := &configClient{
+func newLocalClient(cfs map[string][]string) Center {
+	ret := &localClient{
 		entries: make(map[string][]*Service),
 	}
 	for k, v := range cfs {
@@ -28,12 +28,12 @@ func newConfigClient(cfs map[string][]string) Center {
 	return ret
 }
 
-func (c *configClient) Register(service *Service, check *Check) (err error) {
+func (c *localClient) Register(service *Service, check *Check) (err error) {
 	return
 }
-func (c *configClient) Deregister(serviceId string) (err error) {
+func (c *localClient) Deregister(serviceId string) (err error) {
 	return
 }
-func (c *configClient) Discovery(name string) ([]*Service, error) {
+func (c *localClient) Discovery(name string) ([]*Service, error) {
 	return c.entries[name], nil
 }

@@ -2,15 +2,13 @@ package center
 
 import (
 	"errors"
-	"time"
 )
 
 var ErrInvalidClient = errors.New("invalid consul client")
 
 type Config struct {
 	Address string              // 远程地址
-	Timeout time.Duration       // 本地缓存过期时间
-	Configs map[string][]string // 本地配置address
+	Service map[string][]string // 本地配置服务
 }
 
 // 根据consul的服务项设计
@@ -38,10 +36,10 @@ type Center interface {
 var instance Center
 
 func Setup(opt *Config) {
-	if len(opt.Configs) > 0 {
-		instance = newConfigClient(opt.Configs)
+	if len(opt.Service) > 0 {
+		instance = newLocalClient(opt.Service)
 	} else {
-		instance = newConsulCenter(opt)
+		instance = newConsulClient(opt)
 	}
 }
 

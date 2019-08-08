@@ -3,23 +3,16 @@ package center
 import (
 	"github.com/hashicorp/consul/api"
 	"strings"
+	"sync"
 )
 
-type cacheEntry struct {
-	vl []*Service
-	ts int64
-}
-
-type consulCenter struct {
-	*Config
+type consulClient struct {
 	*api.Client
-	ttl       int64
-	now       int64
-	lastIndex uint64
-	robin     uint32
+	*sync.RWMutex
+	LastIndex uint64
 }
 
-func newConsulCenter(opt *Config) Center {
+func newConsulClient(opt *Config) Center {
 	config := api.DefaultConfig()
 	if opt.Address != "" {
 		config.Address = opt.Address
@@ -33,13 +26,14 @@ func newConsulCenter(opt *Config) Center {
 			return nil
 		}
 	}
-	return &consulCenter{
-		Config: opt,
-		Client: client,
-		ttl:    int64(opt.Timeout.Seconds()),
+	ret := &consulClient{
+		Client:  client,
+		RWMutex: new(sync.RWMutex),
 	}
+
+	return ret
 }
-func (client *consulCenter) Register(service *Service, check *Check) (err error) {
+func (client *consulClient) Register(service *Service, check *Check) (err error) {
 
 	var consulCheck *api.AgentServiceCheck
 	var consulService *api.AgentServiceRegistration
@@ -73,12 +67,12 @@ func (client *consulCenter) Register(service *Service, check *Check) (err error)
 
 	return client.Agent().ServiceRegister(consulService)
 }
-func (client *consulCenter) Deregister(serviceId string) (err error) {
+func (client *consulClient) Deregister(serviceId string) (err error) {
 	return client.Agent().ServiceDeregister(serviceId)
 }
-func (client *consulCenter) Discovery(name string) ([]*Service, error) {
+func (client *consulClient) Discovery(name string) ([]*Service, error) {
 	entries, metainfo, err := client.Health().Service(name, "", true, &api.QueryOptions{
-		WaitIndex: client.lastIndex,
+		WaitIndex: client.LastIndex,
 	})
 	if err != nil {
 		return nil, err
@@ -93,6 +87,6 @@ func (client *consulCenter) Discovery(name string) ([]*Service, error) {
 			Port: entry.Service.Port,
 		}
 	}
-	client.lastIndex = metainfo.LastIndex
+	client.LastIndex = metainfo.LastIndex
 	return services, nil
 }

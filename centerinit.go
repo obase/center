@@ -2,7 +2,6 @@ package center
 
 import (
 	"github.com/obase/conf"
-	"time"
 )
 
 const (
@@ -11,8 +10,6 @@ const (
 
 	OFF = "off"
 )
-
-const DEFAULT_TIMEOUT = 5 * time.Second
 
 func init() {
 	config, ok := conf.Get(PCKEY1)
@@ -24,17 +21,16 @@ func init() {
 	*/
 	switch config := config.(type) {
 	case nil:
-		Setup(&Config{Address: "", Timeout: DEFAULT_TIMEOUT})
+		Setup(&Config{Address: ""})
 	case string:
 		if config != OFF {
-			Setup(&Config{Address: config, Timeout: DEFAULT_TIMEOUT})
+			Setup(&Config{Address: config})
 		}
 	case map[interface{}]interface{}:
-		var option *Config
-		conf.Convert(config, &option)
-		if option != nil && option.Timeout == 0 {
-			option.Timeout = DEFAULT_TIMEOUT
+		service := make(map[string][]string)
+		for k, v := range config {
+			service[k.(string)] = v.([]string)
 		}
-		Setup(option)
+		Setup(&Config{Service: service})
 	}
 }
