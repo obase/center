@@ -1,6 +1,9 @@
 package center
 
-import "unsafe"
+import (
+	"time"
+	"unsafe"
+)
 
 var robin uint
 
@@ -85,4 +88,11 @@ func mmhash(data []byte) uint32 {
 	h1 ^= h1 >> 16
 
 	return (h1 << 24) | (((h1 >> 8) << 16) & 0xFF0000) | (((h1 >> 16) << 8) & 0xFF00) | (h1 >> 24)
+}
+
+func nvl(val time.Duration, def time.Duration) time.Duration {
+	if val == 0 {
+		return def
+	}
+	return val
 }

@@ -2,12 +2,14 @@ package center
 
 import (
 	"errors"
+	"time"
 )
 
 var ErrInvalidClient = errors.New("invalid consul client")
 
 type Config struct {
 	Address string              // 远程地址
+	Refresh time.Duration       // 缓存缓存间隔
 	Service map[string][]string // 本地配置服务
 }
 
