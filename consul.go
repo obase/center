@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	DefaultRefresh = 60 * time.Second
-	ExpiredSeconds = 3600
+	DefaultRefresh = 20 * time.Second
+	ExpiredSeconds = 1800
 )
 
 type consulEntry struct {
@@ -63,28 +63,39 @@ func (client *consulClient) refresh() {
 		}
 	}()
 
-	var newdata map[string]*consulEntry = make(map[string]*consulEntry)
+	var update map[string]*consulEntry = make(map[string]*consulEntry)
 	var now = time.Now().Unix()
 	client.RWMutex.RLock()
 	for k, v := range client.Service {
 		if now-v.atime < ExpiredSeconds {
-			if ret, idx, err := client.discovery(k, v.index); err != nil && len(ret) > 0 {
-				newdata[k] = &consulEntry{
+			if ret, idx, err := client.discovery(k, v.index); err == nil && len(ret) > 0 {
+				update[k] = &consulEntry{
 					value: ret,
 					atime: v.atime,
 					index: idx,
 				}
-			} else {
-				newdata[k] = v
 			}
+		} else {
+			update[k] = nil
 		}
 	}
 	client.RWMutex.RUnlock()
 
 	// 直接切换掉
-	client.RWMutex.Lock()
-	client.Service = newdata
-	client.RWMutex.Unlock()
+	if len(update) > 0 {
+		for k, v := range update {
+			if v != nil {
+				client.RWMutex.Lock()
+				client.Service[k] = v
+				client.RWMutex.Unlock()
+			} else {
+				client.RWMutex.Lock()
+				delete(client.Service, k)
+				client.RWMutex.Unlock()
+			}
+		}
+	}
+
 }
 
 func (client *consulClient) discovery(name string, fromLastIndex uint64) (services []*Service, lastIndex uint64, err error) {

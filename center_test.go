@@ -10,6 +10,8 @@ import (
 
 func TestDiscovery(t *testing.T) {
 	fmt.Println(Discovery("target"))
+
+	time.Sleep(time.Hour)
 }
 
 func TestLockMap(t *testing.T) {
