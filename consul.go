@@ -3,8 +3,6 @@ package center
 import (
 	"github.com/hashicorp/consul/api"
 	"strings"
-	"sync"
-	"time"
 )
 
 type cacheEntry struct {
@@ -18,7 +16,6 @@ type consulCenter struct {
 	ttl       int64
 	now       int64
 	lastIndex uint64
-	cache     *sync.Map
 	robin     uint32
 }
 
@@ -40,7 +37,6 @@ func newConsulCenter(opt *Config) Center {
 		Config: opt,
 		Client: client,
 		ttl:    int64(opt.Timeout.Seconds()),
-		cache:  new(sync.Map),
 	}
 }
 func (client *consulCenter) Register(service *Service, check *Check) (err error) {
@@ -81,16 +77,6 @@ func (client *consulCenter) Deregister(serviceId string) (err error) {
 	return client.Agent().ServiceDeregister(serviceId)
 }
 func (client *consulCenter) Discovery(name string) ([]*Service, error) {
-	var entry *cacheEntry
-	now := time.Now().Unix()
-	if tmp, ok := client.cache.Load(name); ok {
-		if entry, ok = tmp.(*cacheEntry); ok {
-			if now-entry.ts < client.ttl {
-				return entry.vl, nil
-			}
-		}
-	}
-
 	entries, metainfo, err := client.Health().Service(name, "", true, &api.QueryOptions{
 		WaitIndex: client.lastIndex,
 	})
@@ -108,39 +94,5 @@ func (client *consulCenter) Discovery(name string) ([]*Service, error) {
 		}
 	}
 	client.lastIndex = metainfo.LastIndex
-	if entry != nil {
-		entry.vl = services
-		entry.ts = now
-	} else {
-		client.cache.Store(name, &cacheEntry{
-			vl: services,
-			ts: now,
-		})
-	}
 	return services, nil
-}
-
-func (client *consulCenter) Robin(name string) (*Service, error) {
-	services, err := client.Discovery(name)
-	if err != nil {
-		return nil, err
-	}
-	size := uint32(len(services))
-	if size == 0 {
-		return nil, nil
-	}
-	client.robin++
-	return services[client.robin%size], nil
-}
-func (client *consulCenter) Hash(name string, key string) (*Service, error) {
-	services, err := client.Discovery(name)
-	if err != nil {
-		return nil, err
-	}
-	size := uint32(len(services))
-	if size == 0 {
-		return nil, nil
-	}
-	idx := mmhash([]byte(key))
-	return services[idx%size], nil
 }
