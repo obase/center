@@ -155,6 +155,7 @@ func (client *consulClient) Discovery(name string) (ret []*Service, err error) {
 	client.RWMutex.RUnlock()
 
 	if ok {
+		entry.atime = time.Now().Unix() // 标记最后访问时间戳
 		ret = entry.value
 		return
 	}
