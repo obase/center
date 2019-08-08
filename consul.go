@@ -59,7 +59,7 @@ func newConsulClient(opt *Config) Center {
 func (client *consulClient) refresh() {
 	defer func() {
 		if perr := recover(); perr != nil {
-			fmt.Fprint(os.Stderr, "consul service refresh error: %v", perr)
+			fmt.Fprintf(os.Stderr, "consul service refresh error: %v\n", perr)
 		}
 	}()
 
