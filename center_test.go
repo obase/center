@@ -8,10 +8,19 @@ import (
 	"time"
 )
 
-func TestDiscovery(t *testing.T) {
-	for i := 0; i < 10; i++ {
+func TestFetchService(t *testing.T) {
+	for i := 0; i < 1000; i++ {
 		fmt.Println(FetchService("target"))
 		time.Sleep(time.Second)
+	}
+}
+func TestWatchService(t *testing.T) {
+	var service []*Service
+	var index uint64
+
+	for i := 0; i < 10; i++ {
+		service, index, _ = WatchService("target", index)
+		fmt.Printf("%v: %v, %v\n", i, service, index)
 	}
 }
 
