@@ -30,7 +30,7 @@ func init() {
 		var service map[string][]string
 
 		address, ok := conf.ElemString(config, "address")
-		refresh, ok := conf.ElemDuration(config, "refresh")
+		expired, ok := conf.ElemInt64(config, "expired")
 		tmp, ok := conf.ElemMap(config, "service")
 		if ok {
 			service = make(map[string][]string)
@@ -40,7 +40,7 @@ func init() {
 		}
 		Setup(&Config{
 			Address: address,
-			Refresh: refresh,
+			Expired: expired,
 		})
 	}
 }
