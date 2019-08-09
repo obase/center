@@ -12,40 +12,41 @@ import (
 var updateSleepDuration = conf.OptiDuration("grpcx.updateSleepDuration", time.Second)
 
 type serviceWatcher struct {
-	serviceName string
-	address     map[string]bool
+	Name  string
+	Index uint64
+	Cache map[string]bool
 }
 
 func (w *serviceWatcher) Next() ([]*naming.Update, error) {
 	for {
-		services, err := center.Discovery(w.serviceName)
+		services, index, err := center.WatchService(w.Name, w.Index)
 		if err != nil {
 			return nil, err
 		}
+		w.Index = index
 
-		address := make(map[string]bool)
+		cache := make(map[string]bool)
 		for _, service := range services {
-			address[service.Host+":"+strconv.Itoa(service.Port)] = true
+			cache[service.Host+":"+strconv.Itoa(service.Port)] = true
 		}
 
 		var updates []*naming.Update
-		for addr := range w.address {
-			if _, ok := address[addr]; !ok {
+		for addr := range w.Cache {
+			if _, ok := cache[addr]; !ok {
 				updates = append(updates, &naming.Update{Op: naming.Delete, Addr: addr})
 			}
 		}
 
-		for addr := range address {
-			if _, ok := w.address[addr]; !ok {
+		for addr := range cache {
+			if _, ok := w.cache[addr]; !ok {
 				updates = append(updates, &naming.Update{Op: naming.Add, Addr: addr})
 			}
 		}
 
 		if len(updates) != 0 {
-			w.address = address
+			w.Cache = cache
 			return updates, nil
 		}
-		time.Sleep(updateSleepDuration)
 	}
 }
 

@@ -2,14 +2,13 @@ package center
 
 import (
 	"errors"
-	"time"
 )
 
 var ErrInvalidClient = errors.New("invalid consul client")
 
 type Config struct {
 	Address string              // 远程地址
-	Refresh time.Duration       // 缓存缓存间隔
+	Expired int64               // 缓存过期时间(秒)
 	Service map[string][]string // 本地配置服务
 }
 
@@ -32,7 +31,8 @@ type Service struct {
 type Center interface {
 	Register(service *Service, check *Check) (err error)
 	Deregister(serviceId string) (err error)
-	Discovery(name string) ([]*Service, error)
+	FetchService(name string) ([]*Service, uint64, error)               // 有缓存
+	WatchService(name string, index uint64) ([]*Service, uint64, error) // 无缓存
 }
 
 var instance Center
@@ -57,9 +57,16 @@ func Deregister(serviceId string) (err error) {
 	}
 	return instance.Deregister(serviceId)
 }
-func Discovery(name string) ([]*Service, error) {
+func FetchService(name string) ([]*Service, uint64, error) {
 	if instance == nil {
-		return nil, ErrInvalidClient
+		return nil, 0, ErrInvalidClient
 	}
-	return instance.Discovery(name)
+	return instance.FetchService(name)
+}
+
+func WatchService(name string, index uint64) ([]*Service, uint64, error) {
+	if instance == nil {
+		return nil, 0, ErrInvalidClient
+	}
+	return instance.WatchService(name, index)
 }

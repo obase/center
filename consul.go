@@ -1,38 +1,35 @@
 package center
 
 import (
-	"fmt"
 	"github.com/hashicorp/consul/api"
-	"os"
 	"strings"
 	"sync"
 	"time"
 )
 
-const (
-	DefaultRefresh = 20 * time.Second
-	ExpiredSeconds = 1800
-)
+const DEFAULT_EXPIRED int64 = 5 //与828 center默认值相同
 
 type consulEntry struct {
-	value []*Service // 服务项
-	atime int64      // 最后时间戳(秒)
-	index uint64
+	Mtime   int64      // 最后修改时间戳
+	Index   uint64     // 最后刷新的下标
+	Service []*Service // 服务项
 }
 
 type consulClient struct {
 	*api.Client
-	*sync.RWMutex
-	Service map[string]*consulEntry
+	sync.RWMutex
+	Entries map[string]*consulEntry
+	Expired int64 // 缓存过期时间
 }
 
 func newConsulClient(opt *Config) Center {
+	var client *api.Client
+	var err error
+
 	config := api.DefaultConfig()
 	if opt.Address != "" {
 		config.Address = opt.Address
 	}
-	var client *api.Client
-	var err error
 	if client, err = api.NewClient(config); err != nil { // 兼容旧的逻辑
 		return nil
 	} else {
@@ -41,88 +38,14 @@ func newConsulClient(opt *Config) Center {
 		}
 	}
 
-	ret := &consulClient{
+	return &consulClient{
 		Client:  client,
-		RWMutex: new(sync.RWMutex),
-		Service: make(map[string]*consulEntry),
+		Entries: make(map[string]*consulEntry),
+		Expired: nvl(opt.Expired, DEFAULT_EXPIRED),
 	}
-	// 启动后台刷新线程
-	go func(interval time.Duration) {
-		for _ = range time.Tick(interval) {
-			ret.refresh()
-		}
-	}(nvl(opt.Refresh, DefaultRefresh))
-
-	return ret
 }
 
-func (client *consulClient) refresh() {
-	defer func() {
-		if perr := recover(); perr != nil {
-			fmt.Fprintf(os.Stderr, "consul service refresh error: %v\n", perr)
-		}
-	}()
-
-	var update map[string]*consulEntry = make(map[string]*consulEntry)
-	var now = time.Now().Unix()
-	client.RWMutex.RLock()
-	for k, v := range client.Service {
-		if now-v.atime < ExpiredSeconds {
-			if ret, idx, err := client.discovery(k, v.index); err == nil && len(ret) > 0 {
-				update[k] = &consulEntry{
-					value: ret,
-					atime: v.atime,
-					index: idx,
-				}
-			}
-		} else {
-			update[k] = nil
-		}
-	}
-	client.RWMutex.RUnlock()
-
-	// 直接切换掉
-	if len(update) > 0 {
-		for k, v := range update {
-			if v != nil {
-				client.RWMutex.Lock()
-				client.Service[k] = v
-				client.RWMutex.Unlock()
-			} else {
-				client.RWMutex.Lock()
-				delete(client.Service, k)
-				client.RWMutex.Unlock()
-			}
-		}
-	}
-
-}
-
-func (client *consulClient) discovery(name string, fromLastIndex uint64) (services []*Service, lastIndex uint64, err error) {
-	entries, metainfo, err := client.Health().Service(name, "", true, &api.QueryOptions{
-		WaitIndex: fromLastIndex,
-		WaitTime:  100 * time.Millisecond,
-	})
-	if err != nil {
-		return
-	}
-
-	services = make([]*Service, len(entries))
-	for i, entry := range entries {
-		services[i] = &Service{
-			Id:   entry.Service.ID,
-			Kind: string(entry.Service.Kind),
-			Name: name,
-			Host: entry.Service.Address,
-			Port: entry.Service.Port,
-		}
-	}
-	lastIndex = metainfo.LastIndex
-
-	return
-}
-
-func (client *consulClient) Register(service *Service, check *Check) (err error) {
+func (c *consulClient) Register(service *Service, check *Check) (err error) {
 
 	var consulCheck *api.AgentServiceCheck
 	var consulService *api.AgentServiceRegistration
@@ -154,32 +77,54 @@ func (client *consulClient) Register(service *Service, check *Check) (err error)
 		Check:   consulCheck,
 	}
 
-	return client.Agent().ServiceRegister(consulService)
+	return c.Agent().ServiceRegister(consulService)
 }
-func (client *consulClient) Deregister(serviceId string) (err error) {
-	return client.Agent().ServiceDeregister(serviceId)
+func (c *consulClient) Deregister(serviceId string) (err error) {
+	return c.Agent().ServiceDeregister(serviceId)
 }
-func (client *consulClient) Discovery(name string) (ret []*Service, err error) {
 
-	client.RWMutex.RLock()
-	entry, ok := client.Service[name]
-	client.RWMutex.RUnlock()
-
-	if ok {
-		entry.atime = time.Now().Unix() // 标记最后访问时间戳
-		ret = entry.value
-		return
-	}
-
-	ret, idx, err := client.discovery(name, 0)
-	if err == nil {
-		client.RWMutex.Lock()
-		client.Service[name] = &consulEntry{
-			value: ret,
-			atime: time.Now().Unix(),
-			index: idx,
+func (c *consulClient) FetchService(name string) ([]*Service, uint64, error) {
+	var (
+		entry *consulEntry
+		ok    bool
+		err   error
+		now   = time.Now().Unix()
+	)
+	c.RWMutex.RLock()
+	entry, ok = c.Entries[name]
+	c.RWMutex.RUnlock()
+	if !ok || now-entry.Mtime > c.Expired {
+		c.RWMutex.Lock()
+		entry, ok = c.Entries[name]
+		if !ok || now-entry.Mtime > c.Expired { // 二次检测
+			entry = new(consulEntry)
+			entry.Mtime = now
+			entry.Service, entry.Index, err = c.WatchService(name, entry.Index)
+			if err == nil {
+				c.Entries[name] = entry
+			}
 		}
-		client.RWMutex.Unlock()
+		c.RWMutex.Unlock()
 	}
-	return
+	return entry.Service, entry.Index, err
+}
+func (c *consulClient) WatchService(name string, index uint64) ([]*Service, uint64, error) {
+	entries, metainfo, err := c.Client.Health().Service(name, "", true, &api.QueryOptions{
+		WaitIndex: index,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+
+	services := make([]*Service, len(entries))
+	for i, entry := range entries {
+		services[i] = &Service{
+			Id:   entry.Service.ID,
+			Kind: string(entry.Service.Kind),
+			Name: name,
+			Host: entry.Service.Address,
+			Port: entry.Service.Port,
+		}
+	}
+	return services, metainfo.LastIndex, nil
 }

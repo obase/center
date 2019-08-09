@@ -34,6 +34,9 @@ func (c *localClient) Register(service *Service, check *Check) (err error) {
 func (c *localClient) Deregister(serviceId string) (err error) {
 	return
 }
-func (c *localClient) Discovery(name string) ([]*Service, error) {
-	return c.entries[name], nil
+func (c *localClient) FetchService(name string) ([]*Service, uint64, error) {
+	return c.entries[name], 0, nil
+}
+func (c *localClient) WatchService(name string, index uint64) ([]*Service, uint64, error) {
+	return c.entries[name], 0, nil
 }
