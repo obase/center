@@ -109,13 +109,16 @@ func (c *consulClient) FetchService(name string) ([]*Service, uint64, error) {
 	return entry.Service, entry.Index, err
 }
 func (c *consulClient) WatchService(name string, index uint64) ([]*Service, uint64, error) {
-	entries, metainfo, err := c.Client.Health().Service(name, "", true, &api.QueryOptions{
-		WaitIndex: index,
-	})
+	var options *api.QueryOptions
+	if index > 0 {
+		options = &api.QueryOptions{
+			WaitIndex: index,
+		}
+	}
+	entries, metainfo, err := c.Client.Health().Service(name, "", true, options)
 	if err != nil {
 		return nil, 0, err
 	}
-
 	services := make([]*Service, len(entries))
 	for i, entry := range entries {
 		services[i] = &Service{
