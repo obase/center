@@ -104,34 +104,62 @@ func Post(serviceName string, uri string, header map[string]string, reqobj inter
 
 func Proxy(serviceName string, uri string, writer http.ResponseWriter, request *http.Request) (err error) {
 	service, err := center.Robin(serviceName)
-	if err != nil {
-		return
-	}
-	// 没有找到服务
-	if service == nil {
+	if service != nil && err == nil {
+		request.Header.Set(X_PROXY_SCHEME, "http")
+		request.Header.Set(X_PROXY_HOST, service.Host+":"+strconv.Itoa(service.Port))
+		request.Header.Set(X_PROXY_PATH, uri)
+		defaultReverseProxy.ServeHTTP(writer, request)
+	} else {
 		writer.WriteHeader(http.StatusBadGateway)
-		return
 	}
-	request.Header.Set(X_PROXY_SCHEME, "http")
-	request.Header.Set(X_PROXY_HOST, service.Host+":"+strconv.Itoa(service.Port))
-	request.Header.Set(X_PROXY_PATH, uri)
-	defaultReverseProxy.ServeHTTP(writer, request)
 	return
 }
 
 func ProxyTLS(serviceName string, uri string, writer http.ResponseWriter, request *http.Request) (err error) {
 	service, err := center.Robin(serviceName)
-	if err != nil {
-		return
-	}
-	// 没有找到服务
-	if service == nil {
+	if service != nil && err == nil {
+		request.Header.Set(X_PROXY_SCHEME, "https")
+		request.Header.Set(X_PROXY_HOST, service.Host+":"+strconv.Itoa(service.Port))
+		request.Header.Set(X_PROXY_PATH, uri)
+		defaultReverseProxy.ServeHTTP(writer, request)
+	} else {
 		writer.WriteHeader(http.StatusBadGateway)
-		return
 	}
-	request.Header.Set(X_PROXY_SCHEME, "https")
-	request.Header.Set(X_PROXY_HOST, service.Host+":"+strconv.Itoa(service.Port))
-	request.Header.Set(X_PROXY_PATH, uri)
-	defaultReverseProxy.ServeHTTP(writer, request)
 	return
+}
+
+func ProxyHandler(serviceName string, uri string) *httputil.ReverseProxy {
+	return &httputil.ReverseProxy{
+		Transport: defaultTransport,
+		Director: func(req *http.Request) {
+			service, _ := center.Robin(serviceName)
+			if service != nil {
+				req.URL.Scheme = "http"
+				req.URL.Host = service.Host + ":" + strconv.Itoa(service.Port)
+				req.URL.Path = uri
+				if _, ok := req.Header["User-Agent"]; !ok {
+					// explicitly disable User-Agent so it's not set to default value
+					req.Header.Set("User-Agent", "")
+				}
+			}
+		},
+	}
+}
+
+func ProxyHandlerTLS(serviceName string, uri string) *httputil.ReverseProxy {
+	return &httputil.ReverseProxy{
+		Transport: defaultTransport,
+		Director: func(req *http.Request) {
+			service, _ := center.Robin(serviceName)
+			if service != nil {
+				req.URL.Scheme = "https"
+				req.URL.Host = service.Host + ":" + strconv.Itoa(service.Port)
+				req.URL.Path = uri
+				if _, ok := req.Header["User-Agent"]; !ok {
+					// explicitly disable User-Agent so it's not set to default value
+					req.Header.Set("User-Agent", "")
+				}
+			}
+		},
+	}
 }
