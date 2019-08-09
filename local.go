@@ -1,8 +1,10 @@
 package center
 
 import (
+	"math"
 	"net"
 	"strconv"
+	"time"
 )
 
 type localClient struct {
@@ -38,5 +40,10 @@ func (c *localClient) FetchService(name string) ([]*Service, uint64, error) {
 	return c.entries[name], 0, nil
 }
 func (c *localClient) WatchService(name string, index uint64) ([]*Service, uint64, error) {
-	return c.entries[name], 0, nil
+	if index == 0 {
+		return c.entries[name], index + 1, nil
+	} else {
+		time.Sleep(math.MaxInt32 * time.Hour) // 相当于无限期等待
+		return c.entries[name], index + 1, nil
+	}
 }
