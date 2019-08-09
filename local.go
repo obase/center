@@ -43,7 +43,7 @@ func (c *localClient) WatchService(name string, index uint64) ([]*Service, uint6
 	if index == 0 {
 		return c.entries[name], index + 1, nil
 	} else {
-		time.Sleep(math.MaxInt32 * time.Hour) // 相当于无限期等待
+		time.Sleep(time.Duration(math.MaxInt64)) // 相当于无限期等待
 		return c.entries[name], index + 1, nil
 	}
 }
