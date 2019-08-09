@@ -38,7 +38,7 @@ func (w *serviceWatcher) Next() ([]*naming.Update, error) {
 		}
 
 		for addr := range cache {
-			if _, ok := w.cache[addr]; !ok {
+			if _, ok := w.Cache[addr]; !ok {
 				updates = append(updates, &naming.Update{Op: naming.Add, Addr: addr})
 			}
 		}
@@ -61,6 +61,6 @@ func (r *serviceWatcher) Resolve(target string) (naming.Watcher, error) {
 func Dial(serviceName string) (*grpc.ClientConn, error) {
 	return grpc.Dial("", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithBalancer(
 		grpc.RoundRobin(&serviceWatcher{
-			serviceName: serviceName,
+			Name: serviceName,
 		})))
 }
