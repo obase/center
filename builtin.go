@@ -7,7 +7,7 @@ import (
 var robin uint
 
 func Robin(name string) (*Service, error) {
-	services, err := Discovery(name)
+	services, _, err := FetchService(name)
 	if err != nil {
 		return nil, err
 	}
@@ -19,7 +19,7 @@ func Robin(name string) (*Service, error) {
 	return services[robin%uint(size)], nil
 }
 func Hash(name string, key string) (*Service, error) {
-	services, err := Discovery(name)
+	services, _, err := FetchService(name)
 	if err != nil {
 		return nil, err
 	}

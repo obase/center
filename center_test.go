@@ -9,9 +9,10 @@ import (
 )
 
 func TestDiscovery(t *testing.T) {
-	fmt.Println(Discovery("target"))
-
-	time.Sleep(time.Hour)
+	for i := 0; i < 10; i++ {
+		fmt.Println(FetchService("target"))
+		time.Sleep(time.Second)
+	}
 }
 
 func TestLockMap(t *testing.T) {
