@@ -51,17 +51,24 @@ func (c *consulClient) Register(service *Service, check *Check) (err error) {
 	var consulService *api.AgentServiceRegistration
 
 	if check != nil {
-		switch strings.ToUpper(check.Type) {
-		case "HTTP":
+		switch strings.ToLower(check.Type) {
+		case "http":
 			consulCheck = &api.AgentServiceCheck{
 				HTTP:                           check.Target,
 				Timeout:                        check.Timeout,
 				Interval:                       check.Interval,
 				DeregisterCriticalServiceAfter: check.Interval,
 			}
-		case "GRPC":
+		case "grpc":
 			consulCheck = &api.AgentServiceCheck{
 				GRPC:                           check.Target,
+				Timeout:                        check.Timeout,
+				Interval:                       check.Interval,
+				DeregisterCriticalServiceAfter: check.Interval,
+			}
+		case "tcp":
+			consulCheck = &api.AgentServiceCheck{
+				TCP:                            check.Target,
 				Timeout:                        check.Timeout,
 				Interval:                       check.Interval,
 				DeregisterCriticalServiceAfter: check.Interval,
