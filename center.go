@@ -2,6 +2,7 @@ package center
 
 import (
 	"errors"
+	"strings"
 )
 
 var ErrInvalidClient = errors.New("invalid consul client")
@@ -69,4 +70,25 @@ func WatchService(name string, index uint64) ([]*Service, uint64, error) {
 		return nil, 0, ErrInvalidClient
 	}
 	return instance.WatchService(name, index)
+}
+
+func HttpName(name string) string {
+	if strings.HasSuffix(name, ".http") {
+		return name
+	}
+	return name + ".http"
+}
+
+func GrpcName(name string) string {
+	if strings.HasSuffix(name, ".grpc") {
+		return name
+	}
+	return name + ".grpc"
+}
+
+func TcpName(name string) string {
+	if strings.HasSuffix(name, ".tcp") {
+		return name
+	}
+	return name + ".tcp"
 }
