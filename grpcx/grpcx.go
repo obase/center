@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/naming"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -59,6 +60,10 @@ func (r *serviceWatcher) Resolve(target string) (naming.Watcher, error) {
 }
 
 func Dial(serviceName string) (*grpc.ClientConn, error) {
+	// 自动添加后缀
+	if !strings.HasSuffix(serviceName, ".grpc") {
+		serviceName += ".grpc"
+	}
 	return grpc.Dial("", grpc.WithInsecure(), grpc.WithBlock(), grpc.WithBalancer(
 		grpc.RoundRobin(&serviceWatcher{
 			Name: serviceName,
