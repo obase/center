@@ -125,7 +125,7 @@ var ErrInvalidClient = errors.New("invalid consul client")
 ```
 type Config struct {
 	Address string              // 远程地址
-	Timeout time.Duration       // 本地缓存过期时间
+	Expired int64               // 本地缓存过期秒数
 	Configs map[string][]string // 本地配置address
 }
 
@@ -146,10 +146,10 @@ type Check struct {
 type Center interface {
 	Register(service *Service, check *Check) (err error)
 	Deregister(serviceId string) (err error)
-	Discovery(name string) ([]*Service, error)
-	Robin(name string) (*Service, error)
-	Hash(name string, key string) (*Service, error)
+	FetchService(name string) ([]*Service, uint64, error)               // 有缓存
+	WatchService(name string, index uint64) ([]*Service, uint64, error) // 无缓存
 }
+
 ```
 - func Register
 ```
@@ -163,11 +163,17 @@ func Deregister(serviceId string) (err error)
 ```
 反注册服务
 
-- func Discovery
+- func FetchService
 ```
-func Discovery(name string) ([]*Service, error) 
+func FetchService(name string) ([]*Service, uint64, error) 
 ```
-发现服务
+获取服务(非阻塞)
+
+- func WatchService
+```
+func WatchService(name string, index uint64) ([]*Service, uint64, error) 
+```
+获取服务(阻塞直到index后有更新). 同时返回最新的index
 
 - func Robin
 ```
@@ -180,6 +186,25 @@ func Robin(name string) (*Service, error)
 func Hash(name string, key string) (*Service, error)
 ```
 根据key哈希值返回固定服务. 所用算法是murmurhash32
+
+- func HttpName
+```
+func HttpName(name string) string
+```
+获取name对应的http name
+
+- func GrpcName
+```
+func GrpcName(name string) string
+```
+获取name对应的grpc name
+
+- func TcpName
+```
+func TcpName(name string) string
+```
+获取name对应的tcp name
+
 # Examples
 
 conf.yml
@@ -187,6 +212,25 @@ conf.yml
 service:
   # consul注册中心,默认127.0.0.1:8500. 不设置则忽略!
   center: "127.0.0.1:8500"
+
+或者定制缓存超时
+service:
+  # consul注册中心,默认127.0.0.1:8500. 不设置则忽略!
+  center:
+    address: "127.0.0.1:8500"
+    expired: 60
+
+或者设置本地缓存
+service:
+  # consul注册中心,默认127.0.0.1:8500. 不设置则忽略!
+  center:
+    configs:
+      pvpbroker: ["172.31.0.5:9000","172.31.0.19:9000"]
+
+或者禁止center
+service:
+  # consul注册中心,默认127.0.0.1:8500. 不设置则忽略!
+  center: off
 ```
 codes:
 ```

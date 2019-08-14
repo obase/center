@@ -14,7 +14,7 @@ func TestFetchService(t *testing.T) {
 		time.Sleep(time.Second)
 	}
 }
-func TestWatchService(t *testing.T) {
+func _TestWatchService(t *testing.T) {
 	var service []*Service
 	var index uint64
 
@@ -24,7 +24,7 @@ func TestWatchService(t *testing.T) {
 	}
 }
 
-func TestLockMap(t *testing.T) {
+func _TestLockMap(t *testing.T) {
 	p := 100
 	times := 100 * 10000
 	start := time.Now().UnixNano()

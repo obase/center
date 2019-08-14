@@ -1,6 +1,7 @@
 package center
 
 import (
+	"strings"
 	"unsafe"
 )
 
@@ -27,8 +28,29 @@ func Hash(name string, key string) (*Service, error) {
 	if size == 0 {
 		return nil, nil
 	}
-	idx := mmhash([]byte(key))
+	idx := MMHash([]byte(key))
 	return services[idx%uint32(size)], nil
+}
+
+func HttpName(name string) string {
+	if strings.HasSuffix(name, ".http") {
+		return name
+	}
+	return name + ".http"
+}
+
+func GrpcName(name string) string {
+	if strings.HasSuffix(name, ".grpc") {
+		return name
+	}
+	return name + ".grpc"
+}
+
+func TcpName(name string) string {
+	if strings.HasSuffix(name, ".tcp") {
+		return name
+	}
+	return name + ".tcp"
 }
 
 const (
@@ -37,7 +59,7 @@ const (
 )
 
 // GetHash returns a murmur32 hash for the data slice.
-func mmhash(data []byte) uint32 {
+func MMHash(data []byte) uint32 {
 	// Seed is set to 37, same as C# version of emitter
 	var h1 uint32 = 37
 
