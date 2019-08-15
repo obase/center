@@ -25,21 +25,21 @@ const (
 var defaultTransport = &http.Transport{
 	Proxy: http.ProxyFromEnvironment,
 	DialContext: (&net.Dialer{
-		Timeout:   conf.OptiDuration("httpx.connectionTimeout", 30*time.Second),
-		KeepAlive: conf.OptiDuration("httpx.connectionKeepalive", 30*time.Second),
+		Timeout:   conf.OptiDuration("httpx.transport.dialerTimeout", 30*time.Second),
+		KeepAlive: conf.OptiDuration("httpx.transport.dialerKeepAlive", 30*time.Second),
 	}).DialContext,
-	MaxIdleConns:          conf.OptiInt("httpx.maxIdleConns", 10240),
-	IdleConnTimeout:       conf.OptiDuration("httpx.idleConnTimeout", 90*time.Second),
-	TLSHandshakeTimeout:   conf.OptiDuration("httpx.tlsHandshakeTimeout", 10*time.Second),
-	ExpectContinueTimeout: conf.OptiDuration("httpx.expectContinueTimeout", 1*time.Second),
-	MaxIdleConnsPerHost:   conf.OptiInt("httpx.maxIdleConnsPerHost", 2048),
-	ResponseHeaderTimeout: conf.OptiDuration("httpx.responseHeaderTimeout", 5*time.Second),
+	MaxIdleConns:          conf.OptiInt("httpx.transport.maxIdleConns", 10240),
+	IdleConnTimeout:       conf.OptiDuration("httpx.transport.idleConnTimeout", 90*time.Second),
+	TLSHandshakeTimeout:   conf.OptiDuration("httpx.transport.tlsHandshakeTimeout", 10*time.Second),
+	ExpectContinueTimeout: conf.OptiDuration("httpx.transport.expectContinueTimeout", 1*time.Second),
+	MaxIdleConnsPerHost:   conf.OptiInt("httpx.transport.maxIdleConnsPerHost", 2048),
+	ResponseHeaderTimeout: conf.OptiDuration("httpx.transport.responseHeaderTimeout", 5*time.Second),
 }
 
 // 基于828的旧参数
 var defaultClient = &http.Client{
 	Transport: defaultTransport,
-	Timeout:   conf.OptiDuration("http.requestTimeout", 60*time.Second),
+	Timeout:   conf.OptiDuration("httpx.client.timeout", 60*time.Second),
 }
 
 var defaultReverseProxy = &httputil.ReverseProxy{
