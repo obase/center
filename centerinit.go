@@ -14,7 +14,10 @@ const (
 func init() {
 	config, ok := conf.Get(PCKEY1)
 	if !ok {
-		config, ok = conf.Get(PCKEY2)
+		// 828要求server.runmode必须为DEBUG才会启用centerAddr
+		if conf.OptiString("server.runmode", "release") == "debug" {
+			config, ok = conf.Get(PCKEY2)
+		}
 	}
 	/*
 	   为了兼容旧的828逻辑, 在没有声明center或centerAddr的情况默认连接本地. 所以声明一个特殊值"none","off"表示关闭
