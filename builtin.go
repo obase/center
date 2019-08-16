@@ -53,6 +53,13 @@ func TcpName(name string) string {
 	return name + ".tcp"
 }
 
+func ProxyName(name string) string {
+	if strings.HasSuffix(name, ".proxy") {
+		return name
+	}
+	return name + ".proxy"
+}
+
 const (
 	c1_32 uint32 = 0xcc9e2d51
 	c2_32 uint32 = 0x1b873593
