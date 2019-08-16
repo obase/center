@@ -15,24 +15,26 @@ conf.yml
 ```
 # http扩展配置
 httpx:
-  # 请求超时, 默认60秒
-  requestTimeout: "60s"
-  # 连接超时, 默认30秒
-  connectionTimeout: "30s"
-  # 连接keepalive, 默认30秒
-  connectionKeepalive: "30s"
-  # 最大空闲,默认10240
-  maxIdleConns: 10240
-  # 空闲超时, 默认90秒
-  idleConnTimeout: "90s"
-  # TLS握手超时,默认10秒
-  tlsHandshakeTimeout: "10s"
-  # 期望再超时, 默认1秒
-  expectContinueTimeout: "1s"
-  # 每个主机最大连接数, 该值直接影响并发QPS
-  maxIdleConnsPerHost: 2048
-  # 请求头超时, 默认5秒
-  responseHeaderTimeout: "5s"
+  transport:
+    # 连接超时, 默认30秒
+    dialerTimeout: "30s"
+    # 连接keepalive, 默认30秒
+    dialerKeepAlive: "30s"
+    # 最大空闲,默认10240
+    maxIdleConns: 10240
+    # 空闲超时, 默认90秒
+    idleConnTimeout: "90s"
+    # TLS握手超时,默认10秒
+    tlsHandshakeTimeout: "10s"
+    # 期望再超时, 默认1秒
+    expectContinueTimeout: "1s"
+    # 每个主机最大连接数, 该值直接影响并发QPS
+    maxIdleConnsPerHost: 2048
+    # 请求头超时, 默认5秒
+    responseHeaderTimeout: "5s"
+  client:
+    # 客户端默认超时
+    timeout: "60s"
 ```
 # Index
 - Constants
