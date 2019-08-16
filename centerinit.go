@@ -5,7 +5,8 @@ import (
 )
 
 const (
-	CKEY  = "service.center"
+	CKEY  = "center"
+	CKEY2 = "service.center" // 兼容旧版本,新版本建议放置在顶层
 	LOCAL = "local"
 )
 
@@ -15,7 +16,11 @@ const (
 func init() {
 	config, ok := conf.Get(CKEY)
 	if !ok {
-		return
+		// 兼容旧版本,新版本建议放置在顶层
+		config, ok = conf.Get(CKEY2)
+		if !ok {
+			return
+		}
 	}
 	switch config := config.(type) {
 	case nil:
