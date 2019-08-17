@@ -6,53 +6,68 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/obase/center"
-	"github.com/obase/conf"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
-	X_PROXY_SCHEME = "x-proxy-scheme"
-	X_PROXY_HOST   = "x-proxy-host"
-	X_PROXY_PATH   = "x-proxy-path"
+	REVERSE_SCHEME = "rx-scheme"
+	REVERSE_HOST   = "rx-host"
+	REVERSE_PATH   = "rx-path"
 )
 
-var defaultTransport = &http.Transport{
-	Proxy: http.ProxyFromEnvironment,
-	DialContext: (&net.Dialer{
-		Timeout:   conf.OptiDuration("httpx.transport.dialerTimeout", 30*time.Second),
-		KeepAlive: conf.OptiDuration("httpx.transport.dialerKeepAlive", 30*time.Second),
-	}).DialContext,
-	MaxIdleConns:          conf.OptiInt("httpx.transport.maxIdleConns", 10240),
-	IdleConnTimeout:       conf.OptiDuration("httpx.transport.idleConnTimeout", 90*time.Second),
-	TLSHandshakeTimeout:   conf.OptiDuration("httpx.transport.tlsHandshakeTimeout", 10*time.Second),
-	ExpectContinueTimeout: conf.OptiDuration("httpx.transport.expectContinueTimeout", 1*time.Second),
-	MaxIdleConnsPerHost:   conf.OptiInt("httpx.transport.maxIdleConnsPerHost", 2048),
-	ResponseHeaderTimeout: conf.OptiDuration("httpx.transport.responseHeaderTimeout", 5*time.Second),
+var (
+	defaultConfig       *Config
+	defaultTransport    *http.Transport
+	defaultClient       *http.Client
+	defaultReverseProxy *httputil.ReverseProxy
+)
+
+func init() {
+	Setup(LoadConfig())
 }
 
-// 基于828的旧参数
-var defaultClient = &http.Client{
-	Transport: defaultTransport,
-	Timeout:   conf.OptiDuration("httpx.client.timeout", 60*time.Second),
-}
+func Setup(c *Config) {
+	defaultConfig = mergeConfig(c)
 
-var defaultReverseProxy = &httputil.ReverseProxy{
-	Transport: defaultTransport,
-	Director: func(req *http.Request) {
-		req.URL.Scheme = req.Header.Get(X_PROXY_SCHEME)
-		req.URL.Host = req.Header.Get(X_PROXY_HOST)
-		req.URL.Path = req.Header.Get(X_PROXY_PATH)
-		if _, ok := req.Header["User-Agent"]; !ok {
-			// explicitly disable User-Agent so it's not set to default value
-			req.Header.Set("User-Agent", "")
-		}
-	},
+	defaultTransport = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   defaultConfig.ConnectTimeout,
+			KeepAlive: defaultConfig.KeepAlive,
+		}).DialContext,
+		MaxIdleConns:           defaultConfig.MaxIdleConns,
+		MaxIdleConnsPerHost:    defaultConfig.MaxIdleConnsPerHost,
+		MaxConnsPerHost:        defaultConfig.MaxConnsPerHost,
+		IdleConnTimeout:        defaultConfig.IdleConnTimeout,
+		DisableCompression:     defaultConfig.DisableCompression,
+		ResponseHeaderTimeout:  defaultConfig.ResponseHeaderTimeout,
+		ExpectContinueTimeout:  defaultConfig.ExpectContinueTimeout,
+		MaxResponseHeaderBytes: defaultConfig.MaxResponseHeaderBytes,
+	}
+	defaultClient = &http.Client{
+		Transport: defaultTransport,
+		Timeout:   defaultConfig.RequestTimeout,
+	}
+	defaultReverseProxy = &httputil.ReverseProxy{
+		Transport:     defaultTransport,
+		FlushInterval: defaultConfig.ProxyFlushInterval,
+		Director: func(req *http.Request) {
+			req.URL.Scheme = req.Header.Get(REVERSE_SCHEME)
+			req.URL.Host = req.Header.Get(REVERSE_HOST)
+			req.URL.Path = req.Header.Get(REVERSE_PATH)
+			if _, ok := req.Header["User-Agent"]; !ok {
+				// explicitly disable User-Agent so it's not set to default value
+				req.Header.Set("User-Agent", "")
+			}
+		},
+		BufferPool:   proxyBufferPool(defaultConfig.ProxyBufferPool),
+		ErrorHandler: proxyErrorHandler(defaultConfig.ProxyErrorHandler),
+	}
 }
 
 func Request(method string, serviceName string, uri string, header map[string]string, body io.Reader) (state int, content string, err error) {
@@ -105,9 +120,9 @@ func Post(serviceName string, uri string, header map[string]string, reqobj inter
 func Proxy(serviceName string, uri string, writer http.ResponseWriter, request *http.Request) (err error) {
 	service, err := center.Robin(serviceName)
 	if service != nil && err == nil {
-		request.Header.Set(X_PROXY_SCHEME, "http")
-		request.Header.Set(X_PROXY_HOST, service.Host+":"+strconv.Itoa(service.Port))
-		request.Header.Set(X_PROXY_PATH, uri)
+		request.Header.Set(REVERSE_SCHEME, "http")
+		request.Header.Set(REVERSE_HOST, service.Host+":"+strconv.Itoa(service.Port))
+		request.Header.Set(REVERSE_PATH, uri)
 		defaultReverseProxy.ServeHTTP(writer, request)
 	} else {
 		writer.WriteHeader(http.StatusBadGateway)
@@ -118,9 +133,9 @@ func Proxy(serviceName string, uri string, writer http.ResponseWriter, request *
 func ProxyTLS(serviceName string, uri string, writer http.ResponseWriter, request *http.Request) (err error) {
 	service, err := center.Robin(serviceName)
 	if service != nil && err == nil {
-		request.Header.Set(X_PROXY_SCHEME, "https")
-		request.Header.Set(X_PROXY_HOST, service.Host+":"+strconv.Itoa(service.Port))
-		request.Header.Set(X_PROXY_PATH, uri)
+		request.Header.Set(REVERSE_SCHEME, "https")
+		request.Header.Set(REVERSE_HOST, service.Host+":"+strconv.Itoa(service.Port))
+		request.Header.Set(REVERSE_PATH, uri)
 		defaultReverseProxy.ServeHTTP(writer, request)
 	} else {
 		writer.WriteHeader(http.StatusBadGateway)
@@ -130,7 +145,8 @@ func ProxyTLS(serviceName string, uri string, writer http.ResponseWriter, reques
 
 func ProxyHandler(serviceName string, uri string) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
-		Transport: defaultTransport,
+		Transport:     defaultTransport,
+		FlushInterval: defaultConfig.ProxyFlushInterval,
 		Director: func(req *http.Request) {
 			service, _ := center.Robin(serviceName)
 			if service != nil {
@@ -143,12 +159,15 @@ func ProxyHandler(serviceName string, uri string) *httputil.ReverseProxy {
 				}
 			}
 		},
+		BufferPool:   proxyBufferPool(defaultConfig.ProxyBufferPool),
+		ErrorHandler: proxyErrorHandler(defaultConfig.ProxyErrorHandler),
 	}
 }
 
 func ProxyHandlerTLS(serviceName string, uri string) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
-		Transport: defaultTransport,
+		Transport:     defaultTransport,
+		FlushInterval: defaultConfig.ProxyFlushInterval,
 		Director: func(req *http.Request) {
 			service, _ := center.Robin(serviceName)
 			if service != nil {
@@ -161,5 +180,7 @@ func ProxyHandlerTLS(serviceName string, uri string) *httputil.ReverseProxy {
 				}
 			}
 		},
+		BufferPool:   proxyBufferPool(defaultConfig.ProxyBufferPool),
+		ErrorHandler: proxyErrorHandler(defaultConfig.ProxyErrorHandler),
 	}
 }
