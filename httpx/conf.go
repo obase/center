@@ -192,10 +192,10 @@ func proxyBufferPool(name string) httputil.BufferPool {
 	}
 	panic("invalid proxy buffer pool type: " + name)
 }
-
+// 注意: 必须先WriteHeader再Write Body,否则superfluous response.WriteHeader
 func bodyErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
-	fmt.Fprintf(w, " proxy error: %v", err)
 	w.WriteHeader(http.StatusBadGateway)
+	fmt.Fprintf(w, " proxy error: %v", err)
 }
 
 func proxyErrorHandler(name string) func(w http.ResponseWriter, r *http.Request, err error) {
