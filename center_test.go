@@ -9,10 +9,14 @@ import (
 )
 
 func TestFetchService(t *testing.T) {
-	for i := 0; i < 1000; i++ {
-		fmt.Println(FetchService("target"))
-		time.Sleep(time.Second)
+	ch := make(chan int)
+	select {
+	case ch <- 1:
+		fmt.Println("insert into ....")
+	case <-time.After(time.Second):
+		fmt.Println("after 1 second...")
 	}
+	fmt.Println("done yet...")
 }
 func _TestWatchService(t *testing.T) {
 	var service []*Service
@@ -24,9 +28,9 @@ func _TestWatchService(t *testing.T) {
 	}
 }
 
-func _TestLockMap(t *testing.T) {
+func TestLockMap(t *testing.T) {
 	p := 100
-	times := 100 * 10000
+	times := 1 * 10000
 	start := time.Now().UnixNano()
 	test2(p, times)
 	end := time.Now().UnixNano()
@@ -34,6 +38,7 @@ func _TestLockMap(t *testing.T) {
 }
 
 func test1(p int, times int) {
+
 	m := new(sync.Map)
 	wg := new(sync.WaitGroup)
 	for j := 0; j < p; j++ {

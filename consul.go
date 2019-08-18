@@ -10,7 +10,7 @@ import (
 const DEFAULT_EXPIRED int64 = 5 //与828 center默认值相同
 
 type consulEntry struct {
-	Mtime   int64      // 最后修改时间戳
+	sync.RWMutex
 	Index   uint64     // 最后刷新的下标
 	Service []*Service // 服务项
 }
@@ -38,10 +38,30 @@ func newConsulClient(opt *Config) Center {
 		}
 	}
 
-	return &consulClient{
+	ret := &consulClient{
 		Client:  client,
 		Entries: make(map[string]*consulEntry),
 		Expired: nvl(opt.Expired, DEFAULT_EXPIRED),
+	}
+	// 启动刷新后台,定期更新entires的数据
+	go refreshConsulClientEntries(ret)
+
+	return ret
+}
+
+func refreshConsulClientEntries(c *consulClient) {
+	for _ = range time.Tick(time.Duration(c.Expired)*time.Second) {
+		wg := new(sync.WaitGroup)
+		c.RWMutex.RLock()
+		for name, entry := range c.Entries {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				c.refresh(name, entry)
+			}()
+		}
+		c.RWMutex.RUnlock()
+		wg.Wait()
 	}
 }
 
@@ -90,31 +110,48 @@ func (c *consulClient) Deregister(serviceId string) (err error) {
 	return c.Agent().ServiceDeregister(serviceId)
 }
 
-func (c *consulClient) FetchService(name string) ([]*Service, uint64, error) {
+func (c *consulClient) FetchService(name string) (service []*Service, index uint64, err error) {
 	var (
 		entry *consulEntry
 		ok    bool
-		err   error
-		now   = time.Now().Unix()
 	)
 	c.RWMutex.RLock()
 	entry, ok = c.Entries[name]
 	c.RWMutex.RUnlock()
-	if !ok || now-entry.Mtime > c.Expired {
+	if !ok {
 		c.RWMutex.Lock()
 		entry, ok = c.Entries[name]
-		if !ok || now-entry.Mtime > c.Expired { // 二次检测
+		if !ok { // 二重检测
 			entry = new(consulEntry)
-			entry.Mtime = now
-			entry.Service, entry.Index, err = c.WatchService(name, entry.Index)
-			if err == nil {
-				c.Entries[name] = entry
-			}
+			c.Entries[name] = entry
 		}
 		c.RWMutex.Unlock()
 	}
-	return entry.Service, entry.Index, err
+	entry.RWMutex.RLock()
+	service, index = entry.Service, entry.Index
+	entry.RWMutex.RUnlock()
+	if service == nil {
+		entry.RWMutex.Lock()
+		service, index = entry.Service, entry.Index
+		if service == nil { // 二重检测
+			service, index, err = c.refresh(name, entry)
+		}
+		entry.RWMutex.Unlock()
+	}
+	return
 }
+
+func (c *consulClient) refresh(name string, entry *consulEntry) (service []*Service, index uint64, err error) {
+	if service, index, err = c.WatchService(name, 0); err == nil {
+		if index != entry.Index {
+			entry.RWMutex.Lock()
+			entry.Service, entry.Index = service, index
+			entry.RWMutex.Unlock()
+		}
+	}
+	return
+}
+
 func (c *consulClient) WatchService(name string, index uint64) ([]*Service, uint64, error) {
 	var options *api.QueryOptions
 	if index > 0 {
