@@ -9,10 +9,11 @@ import (
 )
 
 func TestFetchService(t *testing.T) {
-	//for i := 0; i < 1000; i++ {
-	fmt.Println(FetchService("target"))
-	//time.Sleep(time.Second)
-	//}
+	for i := 0; i < 1000; i++ {
+		fmt.Println(FetchService("target"))
+		time.Sleep(time.Second)
+	}
+	time.Sleep(time.Hour)
 }
 func _TestWatchService(t *testing.T) {
 	var service []*Service
