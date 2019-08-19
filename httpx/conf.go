@@ -157,7 +157,7 @@ func mergeConfig(c *Config) *Config {
 		c.ProxyBufferPool = ProxyBufferPool_None
 	}
 	if c.ProxyErrorHandler == "" {
-		c.ProxyErrorHandler = ProxyErrorHandler_None
+		c.ProxyErrorHandler = ProxyErrorHandler_Body
 	}
 	return c
 }
@@ -192,6 +192,7 @@ func proxyBufferPool(name string) httputil.BufferPool {
 	}
 	panic("invalid proxy buffer pool type: " + name)
 }
+
 // 注意: 必须先WriteHeader再Write Body,否则superfluous response.WriteHeader
 func bodyErrorHandler(w http.ResponseWriter, r *http.Request, err error) {
 	w.WriteHeader(http.StatusBadGateway)
