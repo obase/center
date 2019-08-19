@@ -27,7 +27,7 @@ func newConsulClient(opt *Config) Center {
 	var err error
 
 	config := api.DefaultConfig()
-	if opt.Address != "" {
+	if opt.Address != LOCAL {
 		config.Address = opt.Address
 	}
 	if client, err = api.NewClient(config); err != nil { // 兼容旧的逻辑
