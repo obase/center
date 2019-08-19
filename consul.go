@@ -1,7 +1,6 @@
 package center
 
 import (
-	"fmt"
 	"github.com/hashicorp/consul/api"
 	"strings"
 	"sync"
@@ -53,7 +52,6 @@ func newConsulClient(opt *Config) Center {
 const maxprocs = 8 // 最多起8个协程处理后台更新
 func refreshConsulClientEntries(c *consulClient) {
 	for _ = range time.Tick(time.Duration(c.Expired) * time.Second) {
-		fmt.Println(time.Now().Format("2006-01-02 15:04:05.000"))
 		if len(c.Entries) <= maxprocs {
 			// 数量不超maxprocs不需分组
 			wg := new(sync.WaitGroup)
