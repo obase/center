@@ -164,12 +164,7 @@ func (c *consulClient) FetchService(name string) (service []*Service, index uint
 	service, index = entry.Service, entry.Index
 	entry.RWMutex.RUnlock()
 	if service == nil {
-		entry.RWMutex.Lock()
-		service, index = entry.Service, entry.Index
-		if service == nil { // 二重检测
-			service, index, err = c.refresh(name, entry)
-		}
-		entry.RWMutex.Unlock()
+		service, index, err = c.refresh(name, entry) // FIXBUG: 在refresh已经加锁,外层不再需要锁
 	}
 	return
 }
