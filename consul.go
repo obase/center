@@ -49,19 +49,52 @@ func newConsulClient(opt *Config) Center {
 	return ret
 }
 
+const maxprocs = 8 // 最多起8个协程处理后台更新
 func refreshConsulClientEntries(c *consulClient) {
 	for _ = range time.Tick(time.Duration(c.Expired)*time.Second) {
-		wg := new(sync.WaitGroup)
-		c.RWMutex.RLock()
-		for name, entry := range c.Entries {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				c.refresh(name, entry)
-			}()
+		if len(c.Entries) <= maxprocs {
+			// 数量不超maxprocs不需分组
+			wg := new(sync.WaitGroup)
+			c.RWMutex.RLock()
+			for name, entry := range c.Entries {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					c.refresh(name, entry)
+				}()
+			}
+			c.RWMutex.RUnlock()
+			wg.Wait()
+		} else {
+			// 数量超过maxprocs需要分组
+			set := make([]map[string]*consulEntry, maxprocs)
+			cnt := 0
+			c.RWMutex.RLock()
+			for name, entry := range c.Entries {
+				idx := cnt % maxprocs
+				if set[idx] == nil {
+					set[idx] = make(map[string]*consulEntry)
+				}
+				set[idx][name] = entry
+				cnt++
+			}
+			c.RWMutex.RUnlock()
+
+			wg := new(sync.WaitGroup)
+			for _, part := range set {
+				if len(part) > 0 {
+					wg.Add(1)
+					go func() {
+						defer wg.Done()
+						for name, entry := range part {
+							c.refresh(name, entry)
+						}
+					}()
+				}
+			}
+			wg.Wait()
 		}
-		c.RWMutex.RUnlock()
-		wg.Wait()
+
 	}
 }
 
