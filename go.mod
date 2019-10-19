@@ -3,6 +3,6 @@ module github.com/obase/center
 go 1.12
 
 require (
-	github.com/hashicorp/consul/api latest
-	github.com/obase/conf latest
+	github.com/hashicorp/consul/api v1.2.0
+	github.com/obase/conf v1.7.2
 )
