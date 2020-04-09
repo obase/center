@@ -1,22 +1,15 @@
 # 方式一: 指定本地
-service:
-  # consul注册中心,local表示127.0.0.1:8500.
-  center: local
+center: local
 
 # 方式二: 指定特定Agent
-service:
-  # consul注册中心,local表示127.0.0.1:8500.
-  center: "10.11.165.44:18500"
+center: "10.11.165.44:18500"
 
 # 方式三: 配置缓存过期时间,单位是秒
-service:
-  # consul注册中心,默认127.0.0.1:8500. 不设置则忽略!
-  center:
-    address: "127.0.0.1:8500"
-    expired: 60
+center:
+   address: "127.0.0.1:8500"
+   expired: 60
 
 # 方式四: 静态配置,不再访问远程. 格式: serviceName : [host:port, host:port,...]
-service:
-  center:
-    configs:
-      pvpbroker: ["172.31.0.5:9000","172.31.0.19:9000"]
+center:
+   configs:
+     pvpbroker: ["172.31.0.5:9000","172.31.0.19:9000"]
