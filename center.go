@@ -52,7 +52,7 @@ func Register(service *Service, check *Check) (err error) {
 	return instance.Register(service, check)
 }
 func Deregister(serviceId string) (err error) {
-	if instance != nil {
+	if instance == nil {
 		return ErrInvalidClient
 	}
 	return instance.Deregister(serviceId)
