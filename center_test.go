@@ -10,7 +10,7 @@ import (
 
 func TestFetchService(t *testing.T) {
 	for i := 0; i < 1000; i++ {
-		fmt.Println(FetchService("target"))
+		fmt.Println(FetchService("pvpbroker"))
 		time.Sleep(time.Second)
 	}
 	time.Sleep(time.Hour)

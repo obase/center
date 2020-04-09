@@ -11,5 +11,5 @@ center:
 
 # 方式四: 静态配置,不再访问远程. 格式: serviceName : [host:port, host:port,...]
 center:
-   configs:
+   service:
      pvpbroker: ["172.31.0.5:9000","172.31.0.19:9000"]

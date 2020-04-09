@@ -35,12 +35,13 @@ func init() {
 		if ok {
 			service = make(map[string][]string)
 			for k, v := range tmp {
-				service[k] = v.([]string)
+				service[k] = conf.ToStringSlice(v)
 			}
 		}
 		Setup(&Config{
 			Address: address,
 			Expired: expired,
+			Service: service,
 		})
 	}
 }
