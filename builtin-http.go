@@ -404,7 +404,7 @@ func HttpProxyHandler(serviceName string, uri string) *httputil.ReverseProxy {
 	}
 }
 
-func HttpsProxyHandlerTLS(serviceName string, uri string) *httputil.ReverseProxy {
+func HttpsProxyHandler(serviceName string, uri string) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
 		Transport:     defaultTransport,
 		FlushInterval: defaultConfig.ProxyFlushInterval,
