@@ -1,7 +1,7 @@
-package v2
+package center
 
 import (
-	"github.com/obase/conf/v2"
+	"github.com/obase/conf"
 )
 
 const (

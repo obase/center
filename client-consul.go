@@ -1,4 +1,4 @@
-package v2
+package center
 
 import (
 	"github.com/hashicorp/consul/api"
