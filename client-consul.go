@@ -2,12 +2,11 @@ package center
 
 import (
 	"github.com/hashicorp/consul/api"
+	"github.com/obase/log"
 	"strings"
 	"sync"
 	"time"
 )
-
-const DEFAULT_EXPIRED int64 = 5 //与828 center默认值相同
 
 type consulEntry struct {
 	sync.RWMutex
@@ -19,7 +18,6 @@ type consulClient struct {
 	*api.Client
 	sync.RWMutex
 	Entries map[string]*consulEntry
-	Expired int64 // 缓存过期时间
 }
 
 func newConsulClient(opt *Config) Center {
@@ -41,60 +39,71 @@ func newConsulClient(opt *Config) Center {
 	ret := &consulClient{
 		Client:  client,
 		Entries: make(map[string]*consulEntry),
-		Expired: nvl(opt.Expired, DEFAULT_EXPIRED),
 	}
 	// 启动刷新后台,定期更新entires的数据
-	go refreshConsulClientEntries(ret, opt.Refresh)
+	if opt.Expired > 0 {
+		go func() {
+			_expire, _refresh := opt.Expired, opt.Refresh
+			for _ = range time.Tick(time.Duration(_expire) * time.Second) {
+				ret.RefreshEntries(_refresh)
+			}
+		}()
+	}
 
 	return ret
 }
 
-func refreshConsulClientEntries(c *consulClient, n int) {
-	for _ = range time.Tick(time.Duration(c.Expired) * time.Second) {
-		if len(c.Entries) <= n {
-			// 数量不超maxprocs不需分组
-			wg := new(sync.WaitGroup)
-			c.RWMutex.RLock()
-			for name, entry := range c.Entries {
+func (c *consulClient) RefreshEntries(refresh int) {
+
+	defer func() {
+		if perr := recover(); perr != nil {
+			log.ErrorStack("refreshConsulClientEntries panic: %v", perr)
+		}
+	}()
+
+	if len(c.Entries) <= refresh {
+		// 数量不超maxprocs不需分组
+		wg := new(sync.WaitGroup)
+		c.RWMutex.RLock()
+		for name, entry := range c.Entries {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				c.refresh(name, entry)
+			}()
+		}
+		c.RWMutex.RUnlock()
+		wg.Wait()
+	} else {
+		// 数量超过maxprocs需要分组
+		set := make([]map[string]*consulEntry, refresh)
+		cnt := 0
+		c.RWMutex.RLock()
+		for name, entry := range c.Entries {
+			idx := cnt % refresh
+			if set[idx] == nil {
+				set[idx] = make(map[string]*consulEntry)
+			}
+			set[idx][name] = entry
+			cnt++
+		}
+		c.RWMutex.RUnlock()
+
+		wg := new(sync.WaitGroup)
+		for _, part := range set {
+			if len(part) > 0 {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					c.refresh(name, entry)
+					for name, entry := range part {
+						c.refresh(name, entry)
+					}
 				}()
 			}
-			c.RWMutex.RUnlock()
-			wg.Wait()
-		} else {
-			// 数量超过maxprocs需要分组
-			set := make([]map[string]*consulEntry, n)
-			cnt := 0
-			c.RWMutex.RLock()
-			for name, entry := range c.Entries {
-				idx := cnt % n
-				if set[idx] == nil {
-					set[idx] = make(map[string]*consulEntry)
-				}
-				set[idx][name] = entry
-				cnt++
-			}
-			c.RWMutex.RUnlock()
-
-			wg := new(sync.WaitGroup)
-			for _, part := range set {
-				if len(part) > 0 {
-					wg.Add(1)
-					go func() {
-						defer wg.Done()
-						for name, entry := range part {
-							c.refresh(name, entry)
-						}
-					}()
-				}
-			}
-			wg.Wait()
 		}
-
+		wg.Wait()
 	}
+
 }
 
 func (c *consulClient) Register(service *Service, check *Check) (err error) {
