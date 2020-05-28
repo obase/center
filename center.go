@@ -6,10 +6,26 @@ import (
 
 var ErrInvalidClient = errors.New("invalid consul client")
 
+const (
+	DEFAULT_REFRESH = 8  // 最多起8个协程处理后台更新
+	DEFAULT_EXPIRED = 60 //与828 center默认值相同
+)
+
 type Config struct {
 	Address string              // 远程地址
-	Expired int64               // 缓存过期时间(秒)
 	Service map[string][]string // 本地配置服务
+	Expired int64               // 缓存过期时间(秒)
+	Refresh int                 // 并发刷新协程数量
+}
+
+func mergeConfig(c *Config) *Config {
+	if c == nil {
+		c = new(Config)
+	}
+	if c.Refresh == 0 {
+		c.Refresh = DEFAULT_REFRESH
+	}
+	return c
 }
 
 // 根据consul的服务项设计
@@ -38,6 +54,9 @@ type Center interface {
 var instance Center
 
 func Setup(opt *Config) {
+
+	opt = mergeConfig(opt)
+
 	if len(opt.Service) > 0 {
 		instance = newLocalClient(opt.Service)
 	} else {

@@ -38,10 +38,12 @@ func init() {
 				service[k] = conf.ToStringSlice(v)
 			}
 		}
+		refresh, ok := conf.ElemInt(config, "refresh")
 		Setup(&Config{
 			Address: address,
 			Expired: expired,
 			Service: service,
+			Refresh: refresh,
 		})
 	}
 }
