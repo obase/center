@@ -44,15 +44,14 @@ func newConsulClient(opt *Config) Center {
 		Expired: nvl(opt.Expired, DEFAULT_EXPIRED),
 	}
 	// 启动刷新后台,定期更新entires的数据
-	go refreshConsulClientEntries(ret)
+	go refreshConsulClientEntries(ret, opt.Refresh)
 
 	return ret
 }
 
-const maxprocs = 8 // 最多起8个协程处理后台更新
-func refreshConsulClientEntries(c *consulClient) {
+func refreshConsulClientEntries(c *consulClient, n int) {
 	for _ = range time.Tick(time.Duration(c.Expired) * time.Second) {
-		if len(c.Entries) <= maxprocs {
+		if len(c.Entries) <= n {
 			// 数量不超maxprocs不需分组
 			wg := new(sync.WaitGroup)
 			c.RWMutex.RLock()
@@ -67,11 +66,11 @@ func refreshConsulClientEntries(c *consulClient) {
 			wg.Wait()
 		} else {
 			// 数量超过maxprocs需要分组
-			set := make([]map[string]*consulEntry, maxprocs)
+			set := make([]map[string]*consulEntry, n)
 			cnt := 0
 			c.RWMutex.RLock()
 			for name, entry := range c.Entries {
-				idx := cnt % maxprocs
+				idx := cnt % n
 				if set[idx] == nil {
 					set[idx] = make(map[string]*consulEntry)
 				}
