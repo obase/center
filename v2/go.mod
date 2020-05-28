@@ -1,6 +1,6 @@
-module github.com/obase/center
+module github.com/obase/center/v2
 
-go 1.12
+go 1.14
 
 require (
 	github.com/hashicorp/consul/api v1.3.0
