@@ -42,6 +42,7 @@ type Service struct {
 	Name string `json:"name,omitempty"`
 	Host string `json:"host,omitempty"`
 	Port int    `json:"port,omitempty"`
+	Addr string // 是host:port,避免反复拼接
 }
 
 type Center interface {

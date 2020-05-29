@@ -3,6 +3,7 @@ package center
 import (
 	"github.com/hashicorp/consul/api"
 	"github.com/obase/log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -207,6 +208,7 @@ func (c *consulClient) WatchService(name string, index uint64) ([]*Service, uint
 			Name: name,
 			Host: entry.Service.Address,
 			Port: entry.Service.Port,
+			Addr: entry.Service.Address + ":" + strconv.Itoa(entry.Service.Port), // 注意: addr = host : port
 		}
 	}
 	return services, metainfo.LastIndex, nil
