@@ -2,14 +2,17 @@ package center
 
 import (
 	"errors"
+	"github.com/obase/conf"
 )
 
 var ErrInvalidClient = errors.New("invalid consul client")
 
 const (
-	DEFAULT_REFRESH = 8  // 最多起8个协程处理后台更新
-	DEFAULT_EXPIRED = 60 //与828 center默认值相同
+	DEFAULT_REFRESH = 8 // 最多起8个协程处理后台更新
+	LOCAL           = "local"
 )
+
+const CKEY = "center"
 
 type Config struct {
 	Address string              // 远程地址
@@ -18,30 +21,51 @@ type Config struct {
 	Refresh int                 // 并发刷新协程数量
 }
 
-func mergeConfig(c *Config) *Config {
-	if c == nil {
-		c = new(Config)
+func init() {
+	config, ok := conf.Get(CKEY)
+	if !ok {
+		return
 	}
-	if c.Refresh == 0 {
-		c.Refresh = DEFAULT_REFRESH
+	switch config := config.(type) {
+	case nil:
+		Setup(&Config{Address: LOCAL})
+	case string:
+		Setup(&Config{Address: config})
+	case map[interface{}]interface{}:
+		var service map[string][]string
+		address, ok := conf.ElemString(config, "address")
+		expired, ok := conf.ElemInt64(config, "expired")
+		tmp, ok := conf.ElemMap(config, "service")
+		if ok {
+			service = make(map[string][]string)
+			for k, v := range tmp {
+				service[k] = conf.ToStringSlice(v)
+			}
+		}
+		refresh, ok := conf.ElemInt(config, "refresh")
+		Setup(&Config{
+			Address: address,
+			Expired: expired,
+			Service: service,
+			Refresh: refresh,
+		})
 	}
-	return c
 }
 
 // 根据consul的服务项设计
 type Check struct {
-	Type     string `json:"type,omitempty"`
-	Target   string `json:"target,omitempty"`
-	Timeout  string `json:"timeout,omitempty"`
-	Interval string `json:"interval,omitempty"`
+	Type     string
+	Target   string
+	Timeout  string
+	Interval string
 }
 
 type Service struct {
-	Id   string `json:"id,omitempty"` // 如果为空则自动生成
-	Kind string `json:"kind,omitempty"`
-	Name string `json:"name,omitempty"`
-	Host string `json:"host,omitempty"`
-	Port int    `json:"port,omitempty"`
+	Id   string
+	Kind string
+	Name string
+	Host string
+	Port int
 	Addr string // 是host:port,避免反复拼接
 }
 
@@ -54,14 +78,19 @@ type Center interface {
 
 var instance Center
 
-func Setup(opt *Config) {
+func Setup(c *Config) {
 
-	opt = mergeConfig(opt)
+	if c == nil {
+		c = new(Config)
+	}
+	if c.Refresh == 0 {
+		c.Refresh = DEFAULT_REFRESH
+	}
 
-	if len(opt.Service) > 0 {
-		instance = newLocalClient(opt.Service)
+	if len(c.Service) > 0 {
+		instance = newLocalClient(c.Service)
 	} else {
-		instance = newConsulClient(opt)
+		instance = newConsulClient(c)
 	}
 }
 

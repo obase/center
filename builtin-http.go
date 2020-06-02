@@ -7,140 +7,110 @@ import (
 	"net/http/httputil"
 )
 
-func HttpRequest(serviceName string, method string, uri string, header map[string]string, body io.Reader) (int, string, error) {
+func HttpRequest(serviceName string, method string, uri string, header map[string]string, body io.Reader) (status int, content string, err error) {
 	service, err := Robin(serviceName)
 	if err != nil {
-		return 0, "", err
+		return
 	}
-
-	var url string
-	{
-		buf := kit.BorrowBuffer()
-		buf.WriteString("http://")
-		buf.WriteString(service.Addr)
-		buf.WriteString(uri)
-		url = buf.String()
-		kit.ReturnBuffer(buf)
-	}
-	// 创建请求
-	return kit.HttpRequest(method, url, header, body)
+	buf := kit.GetStringBuffer()
+	buf.WriteString("http://")
+	buf.WriteString(service.Addr)
+	buf.WriteString(uri)
+	status, content, err = kit.HttpRequest(method, buf.UnsafeString(), header, body)
+	kit.PutStringBuffer(buf)
+	return
 }
 
-func HttpsRequest(serviceName string, method string, uri string, header map[string]string, body io.Reader) (int, string, error) {
+func HttpsRequest(serviceName string, method string, uri string, header map[string]string, body io.Reader) (status int, content string, err error) {
 	service, err := Robin(serviceName)
 	if err != nil {
-		return 0, "", err
+		return
 	}
-
-	var url string
-	{
-		buf := kit.BorrowBuffer()
-		buf.WriteString("https://")
-		buf.WriteString(service.Addr)
-		buf.WriteString(uri)
-		url = buf.String()
-		kit.ReturnBuffer(buf)
-	}
-	// 创建请求
-	return kit.HttpRequest(method, url, header, body)
+	buf := kit.GetStringBuffer()
+	buf.WriteString("https://")
+	buf.WriteString(service.Addr)
+	buf.WriteString(uri)
+	status, content, err = kit.HttpRequest(method, buf.UnsafeString(), header, body)
+	kit.PutStringBuffer(buf)
+	return
 }
 
 func HttpJson(serviceName string, method string, uri string, header map[string]string, reqobj interface{}, rspobj interface{}) (status int, err error) {
 	service, err := Robin(serviceName)
 	if err != nil {
-		return 0, err
+		return
 	}
-
-	var url string
-	{
-		buf := kit.BorrowBuffer()
-		buf.WriteString("http://")
-		buf.WriteString(service.Addr)
-		buf.WriteString(uri)
-		url = buf.String()
-		kit.ReturnBuffer(buf)
-	}
-	return kit.HttpJson(method, url, header, reqobj, rspobj)
+	buf := kit.GetStringBuffer()
+	buf.WriteString("http://")
+	buf.WriteString(service.Addr)
+	buf.WriteString(uri)
+	status, err = kit.HttpJson(method, buf.UnsafeString(), header, reqobj, rspobj)
+	kit.PutStringBuffer(buf)
+	return
 }
 
 func HttpsJson(serviceName string, method string, uri string, header map[string]string, reqobj interface{}, rspobj interface{}) (status int, err error) {
 	service, err := Robin(serviceName)
 	if err != nil {
-		return 0, err
+		return
 	}
-
-	var url string
-	{
-		buf := kit.BorrowBuffer()
-		buf.WriteString("https://")
-		buf.WriteString(service.Addr)
-		buf.WriteString(uri)
-		url = buf.String()
-		kit.ReturnBuffer(buf)
-	}
-	return kit.HttpJson(method, url, header, reqobj, rspobj)
+	buf := kit.GetStringBuffer()
+	buf.WriteString("https://")
+	buf.WriteString(service.Addr)
+	buf.WriteString(uri)
+	status, err = kit.HttpJson(method, buf.UnsafeString(), header, reqobj, rspobj)
+	kit.PutStringBuffer(buf)
+	return
 }
 
 // 本方法纯粹为了兼容旧思路
-func Post(serviceName string, uri string, param interface{}, result interface{}) error {
+func Post(serviceName string, uri string, param interface{}, result interface{}) (err error) {
 	service, err := Robin(serviceName)
 	if err != nil {
-		return err
+		return
 	}
-
-	var url string
-	{
-		buf := kit.BorrowBuffer()
-		buf.WriteString("http://")
-		buf.WriteString(service.Addr)
-		buf.WriteString(uri)
-		url = buf.String()
-		kit.ReturnBuffer(buf)
-	}
-	_, err = kit.HttpJson(http.MethodPost, url, nil, param, result)
-	return err
+	buf := kit.GetStringBuffer()
+	buf.WriteString("https://")
+	buf.WriteString(service.Addr)
+	buf.WriteString(uri)
+	_, err = kit.HttpJson(http.MethodPost, buf.UnsafeString(), nil, param, result)
+	kit.PutStringBuffer(buf)
+	return
 }
 
 func HttpProxy(serviceName string, uri string, writer http.ResponseWriter, request *http.Request) (err error) {
+
 	service, err := Robin(serviceName)
 	if err != nil {
-		return err
+		return
 	}
-
-	var url string
-	{
-		buf := kit.BorrowBuffer()
-		buf.WriteString("http://")
-		buf.WriteString(service.Addr)
-		buf.WriteString(uri)
-		url = buf.String()
-		kit.ReturnBuffer(buf)
-	}
-	return kit.HttpProxy(url, writer, request)
+	buf := kit.GetStringBuffer()
+	buf.WriteString("http://")
+	buf.WriteString(service.Addr)
+	buf.WriteString(uri)
+	err = kit.HttpProxy(buf.UnsafeString(), writer, request)
+	kit.PutStringBuffer(buf)
+	return
 }
 
 func HttpsProxy(serviceName string, uri string, writer http.ResponseWriter, request *http.Request) (err error) {
 	service, err := Robin(serviceName)
 	if err != nil {
-		return err
+		return
 	}
-
-	var url string
-	{
-		buf := kit.BorrowBuffer()
-		buf.WriteString("https://")
-		buf.WriteString(service.Addr)
-		buf.WriteString(uri)
-		url = buf.String()
-		kit.ReturnBuffer(buf)
-	}
-	return kit.HttpProxy(url, writer, request)
+	buf := kit.GetStringBuffer()
+	buf.WriteString("https://")
+	buf.WriteString(service.Addr)
+	buf.WriteString(uri)
+	err = kit.HttpProxy(buf.UnsafeString(), writer, request)
+	kit.PutStringBuffer(buf)
+	return
 }
 
 func HttpProxyHandler(serviceName string, uri string) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
-		Transport:     kit.DefaultReverseProxy.Transport,
-		FlushInterval: kit.DefaultReverseProxy.FlushInterval,
+		Transport:     kit.ReverseProxy.Transport,
+		FlushInterval: kit.ReverseProxy.FlushInterval,
 		Director: func(req *http.Request) {
 			service, _ := Robin(serviceName)
 			if service != nil {
@@ -153,15 +123,15 @@ func HttpProxyHandler(serviceName string, uri string) *httputil.ReverseProxy {
 				}
 			}
 		},
-		BufferPool:   kit.DefaultReverseProxy.BufferPool,
-		ErrorHandler: kit.DefaultReverseProxy.ErrorHandler,
+		BufferPool:   kit.ReverseProxy.BufferPool,
+		ErrorHandler: kit.ReverseProxy.ErrorHandler,
 	}
 }
 
 func HttpsProxyHandler(serviceName string, uri string) *httputil.ReverseProxy {
 	return &httputil.ReverseProxy{
-		Transport:     kit.DefaultReverseProxy.Transport,
-		FlushInterval: kit.DefaultReverseProxy.FlushInterval,
+		Transport:     kit.ReverseProxy.Transport,
+		FlushInterval: kit.ReverseProxy.FlushInterval,
 		Director: func(req *http.Request) {
 			service, _ := Robin(serviceName)
 			if service != nil {
@@ -174,7 +144,7 @@ func HttpsProxyHandler(serviceName string, uri string) *httputil.ReverseProxy {
 				}
 			}
 		},
-		BufferPool:   kit.DefaultReverseProxy.BufferPool,
-		ErrorHandler: kit.DefaultReverseProxy.ErrorHandler,
+		BufferPool:   kit.ReverseProxy.BufferPool,
+		ErrorHandler: kit.ReverseProxy.ErrorHandler,
 	}
 }
