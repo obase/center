@@ -45,10 +45,3 @@ func GrpcName(name string) string {
 	}
 	return name + ".grpc"
 }
-
-func TcpName(name string) string {
-	if strings.HasSuffix(name, ".tcp") {
-		return name
-	}
-	return name + ".tcp"
-}

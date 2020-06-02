@@ -21,37 +21,6 @@ type Config struct {
 	Refresh int                 // 并发刷新协程数量
 }
 
-func init() {
-	config, ok := conf.Get(CKEY)
-	if !ok {
-		return
-	}
-	switch config := config.(type) {
-	case nil:
-		Setup(&Config{Address: LOCAL})
-	case string:
-		Setup(&Config{Address: config})
-	case map[interface{}]interface{}:
-		var service map[string][]string
-		address, ok := conf.ElemString(config, "address")
-		expired, ok := conf.ElemInt64(config, "expired")
-		tmp, ok := conf.ElemMap(config, "service")
-		if ok {
-			service = make(map[string][]string)
-			for k, v := range tmp {
-				service[k] = conf.ToStringSlice(v)
-			}
-		}
-		refresh, ok := conf.ElemInt(config, "refresh")
-		Setup(&Config{
-			Address: address,
-			Expired: expired,
-			Service: service,
-			Refresh: refresh,
-		})
-	}
-}
-
 // 根据consul的服务项设计
 type Check struct {
 	Type     string
@@ -118,4 +87,35 @@ func WatchService(name string, index uint64) ([]*Service, uint64, error) {
 		return nil, 0, ErrInvalidClient
 	}
 	return instance.WatchService(name, index)
+}
+
+func init() {
+	config, ok := conf.Get(CKEY)
+	if !ok {
+		return
+	}
+	switch config := config.(type) {
+	case nil:
+		Setup(&Config{Address: LOCAL})
+	case string:
+		Setup(&Config{Address: config})
+	case map[interface{}]interface{}:
+		var service map[string][]string
+		address, ok := conf.ElemString(config, "address")
+		expired, ok := conf.ElemInt64(config, "expired")
+		tmp, ok := conf.ElemMap(config, "service")
+		if ok {
+			service = make(map[string][]string)
+			for k, v := range tmp {
+				service[k] = conf.ToStringSlice(v)
+			}
+		}
+		refresh, ok := conf.ElemInt(config, "refresh")
+		Setup(&Config{
+			Address: address,
+			Expired: expired,
+			Service: service,
+			Refresh: refresh,
+		})
+	}
 }

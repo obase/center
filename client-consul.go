@@ -1,8 +1,9 @@
 package center
 
 import (
+	"fmt"
 	"github.com/hashicorp/consul/api"
-	"github.com/obase/log"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,7 +59,7 @@ func (c *consulClient) RefreshEntries(refresh int) {
 
 	defer func() {
 		if perr := recover(); perr != nil {
-			log.ErrorStack("refreshConsulClientEntries panic: %v", perr)
+			fmt.Fprintf(os.Stderr, "center.RefreshEntries error: %v", perr)
 		}
 	}()
 
