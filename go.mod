@@ -4,7 +4,8 @@ go 1.14
 
 require (
 	github.com/hashicorp/consul/api v1.3.0
-	github.com/obase/conf v1.10.0
-	github.com/obase/log v1.10.1
+	github.com/obase/conf v1.10.1
+	github.com/obase/kit v0.0.4
+	github.com/obase/log v1.10.2
 	google.golang.org/grpc v1.29.1
 )

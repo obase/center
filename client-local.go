@@ -23,6 +23,7 @@ func newLocalClient(cfs map[string][]string) Center {
 			h, p, _ := net.SplitHostPort(s)
 			sv.Host = h
 			sv.Port, _ = strconv.Atoi(p)
+			sv.Addr = s
 			ss[i] = sv
 		}
 		ret.entries[k] = ss
